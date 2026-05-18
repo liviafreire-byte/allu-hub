@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Painel de Publicações LinkedIn — allu</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -54,6 +54,12 @@
     .history-item { display: flex; gap: 10px; align-items: flex-start; }
     .history-line { width: 1px; background: #e5e7eb; flex-shrink: 0; margin-left: 5px; }
     input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+    .upload-zone { border: 2px dashed #d1d5db; border-radius: 14px; padding: 28px 20px; text-align: center; transition: border-color 0.15s, background 0.15s; cursor: pointer; background: #fafafa; }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: #1E8549; background: #f0fdf4; }
+    .upload-zone.drag-over { border-style: solid; }
+    .media-preview-img { width: 100%; border-radius: 10px; max-height: 180px; object-fit: cover; display: block; }
+    .media-preview-video { width: 100%; border-radius: 10px; max-height: 180px; display: block; background: #000; }
+    .modal-open { overflow: hidden; }
   </style>
 </head>
 <body>
@@ -135,6 +141,9 @@ const ICONS = {
   target:        <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
   check:         <polyline points="20 6 9 12 4 10"/>,
   crown:         <><path d="M12 1l3.22 6.53L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.78-.74L12 1z"/></>,
+  upload:        <><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></>,
+  video:         <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>,
+  'play-circle': <><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></>,
 };
 
 const Ic = ({ n, size=16, color='currentColor', sw=2 }) => (
@@ -157,7 +166,7 @@ const INITIAL_POSTS = [
     engajamento: 'Alto',
     tags: ['#cultura', '#carrossel', '#employer-branding'],
     linkCTA: 'https://allu.com.br/vagas',
-    imagemURL: '',
+    mediaURL: '', mediaType: 'image',
     observacoes: 'Usar paleta verde e fotos do escritório. Revisar hashtags com o time de marketing.',
     comments: [
       { id: 1, autor: 'Ana Lima', texto: 'Adorei o texto! Só ajusta o CTA para ficar mais chamativo.', timestamp: '16/05/2026 às 14:32' },
@@ -183,7 +192,7 @@ const INITIAL_POSTS = [
     engajamento: 'Alto',
     tags: ['#depoimento', '#cultura', '#carreira'],
     linkCTA: 'https://allu.com.br/carreiras',
-    imagemURL: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80',
+    mediaURL: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80', mediaType: 'image',
     observacoes: 'Post de depoimento real. Aprovação do Lucas pendente antes de publicar.',
     comments: [
       { id: 1, autor: 'RH allu', texto: 'Precisa de aprovação formal antes de publicar depoimento real.', timestamp: '17/05/2026 às 10:00' },
@@ -209,7 +218,7 @@ const INITIAL_POSTS = [
     engajamento: 'Alto',
     tags: ['#trainee', '#vaga', '#expansão'],
     linkCTA: 'https://allu.com.br/trainee2026',
-    imagemURL: '',
+    mediaURL: '', mediaType: 'image',
     observacoes: 'Vídeo de 60s com motion design. Aprovado pelo board em 15/05.',
     comments: [],
     feedbackLideranca: [
@@ -233,7 +242,7 @@ const INITIAL_POSTS = [
     engajamento: 'Médio',
     tags: ['#artigo', '#dados', '#RH'],
     linkCTA: 'https://allu.com.br/blog/hr-analytics',
-    imagemURL: '',
+    mediaURL: '', mediaType: 'image',
     observacoes: 'Validar dados internos com o time de analytics antes de enviar para aprovação.',
     comments: [
       { id: 1, autor: 'Time Analytics', texto: 'Os números precisam ser revisados. Alguns percentuais estão desatualizados.', timestamp: '18/05/2026 às 08:45' },
@@ -255,7 +264,7 @@ const INITIAL_POSTS = [
     engajamento: 'Médio',
     tags: ['#behind-the-scenes', '#cultura', '#sp'],
     linkCTA: '',
-    imagemURL: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+    mediaURL: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80', mediaType: 'image',
     observacoes: 'Checar autorização de imagem de todos os colaboradores visíveis.',
     comments: [],
     feedbackLideranca: [
@@ -386,9 +395,13 @@ const LinkedInModal = ({ post, onClose }) => {
               )}
             </div>
 
-            {post.imagemURL ? (
+            {post.mediaURL && post.mediaType === 'video' ? (
+              <div className="w-full overflow-hidden" style={{background:'#000'}}>
+                <video src={post.mediaURL} controls preload="metadata" style={{width:'100%',maxHeight: isMobile ? 200 : 320,display:'block'}} />
+              </div>
+            ) : post.mediaURL ? (
               <div className="w-full overflow-hidden" style={{maxHeight: isMobile ? 200 : 320, background:'#f3f4f6'}}>
-                <img src={post.imagemURL} alt="" className="w-full object-cover" style={{maxHeight: isMobile ? 200 : 320}} onError={e=>{e.target.style.display='none'}} />
+                <img src={post.mediaURL} alt="" className="w-full object-cover" style={{maxHeight: isMobile ? 200 : 320}} onError={e=>{e.target.style.display='none'}} />
               </div>
             ) : (
               <div className="mx-4 mb-3 rounded-xl flex items-center justify-center" style={{height: isMobile ? 140 : 200, background:'#DFF5E8'}}>
@@ -453,46 +466,153 @@ const ModalField = ({ label, children }) => (
   </div>
 );
 
-// ─── Post Modal (Add/Edit) ────────────────────────────────────────────────────
-const EMPTY = {
-  titulo:'', legenda:'', formato:'Post Estático', dataPublicacao:'',
-  linkCTA:'', imagemURL:'', observacoes:'', status:'Rascunho',
-  prioridade:'Média', objetivo:'Employer Branding', engajamento:'Médio', tags:[],
+// ─── MediaUpload — componente de upload local, fora de PostModal ─────────────
+const ACCEPTED = 'image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm';
+
+const MediaUpload = memo(({ mediaURL, mediaType, onSelect, onRemove }) => {
+  const fileRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  const processFile = useCallback((file) => {
+    if (!file) return;
+    const isImg = file.type.startsWith('image/');
+    const isVid = file.type.startsWith('video/');
+    if (!isImg && !isVid) { alert('Formato não suportado. Use JPG, PNG, WEBP, MP4, MOV ou WEBM.'); return; }
+    // Revoga URL anterior se era blob
+    if (mediaURL && mediaURL.startsWith('blob:')) URL.revokeObjectURL(mediaURL);
+    onSelect(URL.createObjectURL(file), isImg ? 'image' : 'video');
+  }, [mediaURL, onSelect]);
+
+  const onDrop = useCallback((e) => {
+    e.preventDefault(); setDragging(false);
+    processFile(e.dataTransfer.files[0]);
+  }, [processFile]);
+
+  const onDragOver = useCallback((e) => { e.preventDefault(); setDragging(true); }, []);
+  const onDragLeave = useCallback(() => setDragging(false), []);
+  const onFileChange = useCallback((e) => processFile(e.target.files[0]), [processFile]);
+
+  if (mediaURL) {
+    return (
+      <div style={{position:'relative',borderRadius:12,overflow:'hidden',background:'#f3f4f6'}}>
+        {mediaType === 'video'
+          ? <video src={mediaURL} className="media-preview-video" controls preload="metadata" />
+          : <img src={mediaURL} className="media-preview-img" alt="preview" onError={e=>{e.target.style.display='none'}} />
+        }
+        <div style={{position:'absolute',top:8,right:8,display:'flex',gap:6}}>
+          <button
+            onClick={()=>fileRef.current?.click()}
+            style={{background:'rgba(255,255,255,0.92)',border:'1px solid #e5e7eb',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#374151',cursor:'pointer'}}
+          >Trocar</button>
+          <button
+            onClick={onRemove}
+            style={{background:'rgba(239,68,68,0.9)',border:'none',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#fff',cursor:'pointer'}}
+          >Remover</button>
+        </div>
+        <input ref={fileRef} type="file" accept={ACCEPTED} style={{display:'none'}} onChange={onFileChange} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`upload-zone${dragging?' drag-over':''}`}
+      onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
+      onClick={()=>fileRef.current?.click()}
+    >
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+        <div style={{width:44,height:44,borderRadius:12,background:'#DFF5E8',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <Ic n="upload" size={22} color="#1E8549" />
+        </div>
+        <div>
+          <p style={{fontSize:13,fontWeight:600,color:'#374151',margin:0}}>Clique para selecionar ou arraste o arquivo aqui</p>
+          <p style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Imagens: JPG, PNG, WEBP · Vídeos: MP4, MOV, WEBM</p>
+        </div>
+      </div>
+      <input ref={fileRef} type="file" accept={ACCEPTED} style={{display:'none'}} onChange={onFileChange} />
+    </div>
+  );
+});
+
+// ─── Post Modal (Add/Edit) ─────────────────────────────────────────────────
+// PERFORMANCE: campos de texto usam refs (uncontrolled) → zero re-renders ao digitar.
+// Apenas o estado "meta" (selects, datas, tags, mídia) usa useState.
+const EMPTY_META = {
+  formato:'Post Estático', status:'Rascunho', prioridade:'Média',
+  objetivo:'Employer Branding', engajamento:'Médio', dataPublicacao:'',
+  tags:[], mediaURL:'', mediaType:'image',
 };
 
 const PostModal = ({ post, onClose, onSave }) => {
-  const [form, setForm] = useState(post ? {...post} : {...EMPTY});
+  // Estado para campos NÃO-TEXTO (selects, date, tags, mídia) — re-renders OK aqui
+  const [meta, setMeta] = useState(() => post ? {
+    formato: post.formato || EMPTY_META.formato,
+    status: post.status || EMPTY_META.status,
+    prioridade: post.prioridade || EMPTY_META.prioridade,
+    objetivo: post.objetivo || EMPTY_META.objetivo,
+    engajamento: post.engajamento || EMPTY_META.engajamento,
+    dataPublicacao: post.dataPublicacao || '',
+    tags: post.tags || [],
+    mediaURL: post.mediaURL || '',
+    mediaType: post.mediaType || 'image',
+  } : {...EMPTY_META});
+
+  // Refs para campos de TEXTO — sem re-renders ao digitar
+  const tituloRef = useRef(null);
+  const legendaRef = useRef(null);
+  const ctaRef = useRef(null);
+  const obsRef = useRef(null);
+
   const [tagInput, setTagInput] = useState('');
 
-  const set = useCallback((k, v) => setForm(f => ({...f, [k]: v})), []);
+  const setM = useCallback((k, v) => setMeta(m => ({...m, [k]: v})), []);
+
+  const onMediaSelect = useCallback((url, type) => setMeta(m => ({...m, mediaURL:url, mediaType:type})), []);
+  const onMediaRemove = useCallback(() => {
+    if (meta.mediaURL.startsWith('blob:')) URL.revokeObjectURL(meta.mediaURL);
+    setMeta(m => ({...m, mediaURL:'', mediaType:'image'}));
+  }, [meta.mediaURL]);
 
   const addTag = useCallback(() => {
     const t = tagInput.trim().replace(/^#*/, '#');
-    if (t.length > 1 && !form.tags.includes(t)) set('tags', [...form.tags, t]);
+    if (t.length > 1 && !meta.tags.includes(t)) setM('tags', [...meta.tags, t]);
     setTagInput('');
-  }, [tagInput, form.tags, set]);
+  }, [tagInput, meta.tags, setM]);
 
-  const removeTag = useCallback((t) => set('tags', form.tags.filter(x => x !== t)), [form.tags, set]);
+  const removeTag = useCallback((t) => setM('tags', meta.tags.filter(x => x !== t)), [meta.tags, setM]);
 
   const save = useCallback(() => {
-    if (!form.titulo.trim()) { alert('Preencha o título interno.'); return; }
+    const titulo = tituloRef.current?.value?.trim() || '';
+    if (!titulo) { alert('Preencha o título interno.'); tituloRef.current?.focus(); return; }
     const ts = nowStr();
-    if (post) {
-      onSave({...form, historico: [...(form.historico||[]), { acao: 'Post editado', timestamp: ts }]});
+    const built = {
+      titulo,
+      legenda: legendaRef.current?.value || '',
+      linkCTA: ctaRef.current?.value || '',
+      observacoes: obsRef.current?.value || '',
+      ...meta,
+    };
+    if (post?.id) {
+      onSave({...post, ...built, historico:[...(post.historico||[]),{acao:'Post editado',timestamp:ts}]});
     } else {
-      onSave({...form, id: Date.now(), comments:[], feedbackLideranca:[], historico:[{ acao:'Post criado', timestamp: ts }]});
+      onSave({...built, id:Date.now(), comments:[], feedbackLideranca:[], historico:[{acao:'Post criado',timestamp:ts}]});
     }
     onClose();
-  }, [form, post, onSave, onClose]);
+  }, [meta, post, onSave, onClose]);
 
-  const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-preto w-full";
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => document.body.classList.remove('modal-open');
+  }, []);
+
+  const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white w-full";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.72)'}} onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col slide-modal" style={{willChange:'transform'}} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
-            <h2 className="font-bold text-base" style={{fontWeight:700}}>{post ? 'Editar Post' : 'Novo Post'}</h2>
+            <h2 className="font-bold text-base" style={{fontWeight:700,color:'#111'}}>{post ? 'Editar Post' : 'Novo Post'}</h2>
             <p className="text-xs text-gray-400 mt-0.5">Preencha os dados do conteúdo LinkedIn</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
@@ -500,23 +620,26 @@ const PostModal = ({ post, onClose, onSave }) => {
           </button>
         </div>
 
-        <div className="overflow-y-auto scrollbar-hide p-6 grid grid-cols-1 gap-4 flex-1">
+        <div className="overflow-y-auto scrollbar-hide p-6 flex flex-col gap-4 flex-1">
+
+          {/* TEXTO — inputs não-controlados com defaultValue + ref */}
           <ModalField label="Título interno *">
-            <input className={ic} value={form.titulo} onChange={e=>set('titulo',e.target.value)} placeholder="Ex: Post de cultura — maio 2026" />
+            <input ref={tituloRef} className={ic} defaultValue={post?.titulo||''} placeholder="Ex: Post de cultura — maio 2026" style={{color:'#111'}} />
           </ModalField>
 
           <ModalField label="Texto da legenda">
-            <textarea className={ic} rows={5} value={form.legenda} onChange={e=>set('legenda',e.target.value)} placeholder="Escreva o texto completo que será publicado..." />
+            <textarea ref={legendaRef} className={ic} rows={6} defaultValue={post?.legenda||''} placeholder="Escreva o texto completo que será publicado no LinkedIn..." style={{color:'#111',resize:'vertical'}} />
           </ModalField>
 
+          {/* SELECTS — controlados (não há digitação, re-render é OK) */}
           <div className="grid grid-cols-2 gap-4">
             <ModalField label="Formato">
-              <select className={ic} value={form.formato} onChange={e=>set('formato',e.target.value)}>
+              <select className={ic} value={meta.formato} onChange={e=>setM('formato',e.target.value)} style={{color:'#111'}}>
                 {FORMATOS.map(f=><option key={f}>{f}</option>)}
               </select>
             </ModalField>
             <ModalField label="Status">
-              <select className={ic} value={form.status} onChange={e=>set('status',e.target.value)}>
+              <select className={ic} value={meta.status} onChange={e=>setM('status',e.target.value)} style={{color:'#111'}}>
                 {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
               </select>
             </ModalField>
@@ -524,12 +647,12 @@ const PostModal = ({ post, onClose, onSave }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <ModalField label="Prioridade">
-              <select className={ic} value={form.prioridade} onChange={e=>set('prioridade',e.target.value)}>
+              <select className={ic} value={meta.prioridade} onChange={e=>setM('prioridade',e.target.value)} style={{color:'#111'}}>
                 {['Alta','Média','Baixa'].map(p=><option key={p}>{p}</option>)}
               </select>
             </ModalField>
             <ModalField label="Objetivo do post">
-              <select className={ic} value={form.objetivo} onChange={e=>set('objetivo',e.target.value)}>
+              <select className={ic} value={meta.objetivo} onChange={e=>setM('objetivo',e.target.value)} style={{color:'#111'}}>
                 {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
               </select>
             </ModalField>
@@ -537,23 +660,29 @@ const PostModal = ({ post, onClose, onSave }) => {
 
           <div className="grid grid-cols-2 gap-4">
             <ModalField label="Data prevista de publicação">
-              <input type="date" className={ic} value={form.dataPublicacao} onChange={e=>set('dataPublicacao',e.target.value)} />
+              <input type="date" className={ic} value={meta.dataPublicacao} onChange={e=>setM('dataPublicacao',e.target.value)} style={{color:'#111'}} />
             </ModalField>
             <ModalField label="Potencial de engajamento">
-              <select className={ic} value={form.engajamento} onChange={e=>set('engajamento',e.target.value)}>
+              <select className={ic} value={meta.engajamento} onChange={e=>setM('engajamento',e.target.value)} style={{color:'#111'}}>
                 {['Alto','Médio','Baixo'].map(e=><option key={e}>{e}</option>)}
               </select>
             </ModalField>
           </div>
 
+          {/* MÍDIA — upload local */}
+          <ModalField label="Mídia do post">
+            <MediaUpload mediaURL={meta.mediaURL} mediaType={meta.mediaType} onSelect={onMediaSelect} onRemove={onMediaRemove} />
+          </ModalField>
+
+          {/* TAGS */}
           <ModalField label="Tags">
             <div className="flex gap-2">
-              <input className={ic} value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addTag())} placeholder="Ex: #cultura (Enter para adicionar)" />
+              <input className={ic} value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addTag())} placeholder="Ex: #cultura (Enter para adicionar)" style={{color:'#111'}} />
               <button onClick={addTag} className="px-4 py-2 rounded-xl text-sm font-semibold text-white btn" style={{background:'#1E8549',flexShrink:0}}>+</button>
             </div>
-            {form.tags.length > 0 && (
+            {meta.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
-                {form.tags.map(t=>(
+                {meta.tags.map(t=>(
                   <span key={t} className="tag-pill active">
                     {t}
                     <button onClick={()=>removeTag(t)} className="ml-1.5 opacity-60 hover:opacity-100"><Ic n="x" size={9} color="#1E8549" /></button>
@@ -563,16 +692,13 @@ const PostModal = ({ post, onClose, onSave }) => {
             )}
           </ModalField>
 
+          {/* MAIS TEXTO — uncontrolled */}
           <ModalField label="Link / CTA">
-            <input className={ic} value={form.linkCTA} onChange={e=>set('linkCTA',e.target.value)} placeholder="https://allu.com.br/..." />
-          </ModalField>
-
-          <ModalField label="URL da imagem">
-            <input className={ic} value={form.imagemURL} onChange={e=>set('imagemURL',e.target.value)} placeholder="https://images.unsplash.com/..." />
+            <input ref={ctaRef} className={ic} defaultValue={post?.linkCTA||''} placeholder="https://allu.com.br/..." style={{color:'#111'}} />
           </ModalField>
 
           <ModalField label="Observações internas">
-            <textarea className={ic} rows={3} value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Notas para o time, pendências, instruções..." />
+            <textarea ref={obsRef} className={ic} rows={3} defaultValue={post?.observacoes||''} placeholder="Notas para o time, pendências, instruções de design..." style={{color:'#111',resize:'vertical'}} />
           </ModalField>
 
           <div className="flex gap-3 pt-1">
@@ -733,9 +859,14 @@ const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddCo
               <StatusBadge status={post.status} />
             </div>
           </div>
-          {post.imagemURL && (
-            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{background:'#f3f4f6'}}>
-              <img src={post.imagemURL} alt="" className="w-full h-full object-cover" onError={e=>{e.target.parentElement.style.display='none'}} />
+          {post.mediaURL && (
+            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative" style={{background:'#f3f4f6'}}>
+              {post.mediaType === 'video'
+                ? <div className="w-full h-full flex items-center justify-center" style={{background:'#1f2937'}}>
+                    <Ic n="play-circle" size={26} color="#fff" />
+                  </div>
+                : <img src={post.mediaURL} alt="" className="w-full h-full object-cover" onError={e=>{e.target.parentElement.style.display='none'}} />
+              }
             </div>
           )}
         </div>
