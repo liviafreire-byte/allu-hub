@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estratégia LinkedIn — Allu | Employer Branding</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 0;
+  }
+
+  .cover {
+    background: #0a0a0a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 80px;
+    page-break-after: always;
+  }
+
+  .cover .tag {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 32px;
+  }
+
+  .cover h1 {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    color: #fff;
+  }
+
+  .cover h1 span { color: #4B8DFA; }
+
+  .cover .subtitle {
+    font-size: 18px;
+    color: #aaa;
+    margin-bottom: 48px;
+    font-weight: 300;
+  }
+
+  .cover .meta {
+    display: flex;
+    gap: 40px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 32px;
+    margin-top: 48px;
+  }
+
+  .cover .meta-item { display: flex; flex-direction: column; }
+  .cover .meta-item .label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .cover .meta-item .value { font-size: 14px; color: #ddd; font-weight: 500; }
+
+  .page {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 60px 60px;
+  }
+
+  @media print {
+    .cover { min-height: 100vh; }
+    .page { padding: 40px 50px; }
+    .section { page-break-inside: avoid; }
+    h2 { page-break-after: avoid; }
+    .section-break { page-break-before: always; }
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #4B8DFA;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #0a0a0a;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f0f0;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0a0a0a;
+    margin-top: 28px;
+    margin-bottom: 10px;
+  }
+
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+
+  p { margin-bottom: 12px; color: #2a2a2a; }
+
+  ul, ol {
+    padding-left: 20px;
+    margin-bottom: 16px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    color: #2a2a2a;
+  }
+
+  .bullet-block {
+    background: #f8f9fc;
+    border-left: 3px solid #4B8DFA;
+    padding: 16px 20px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .bullet-block li {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 8px;
+    font-size: 13.5px;
+  }
+
+  .bullet-block li::before {
+    content: "→ ";
+    color: #4B8DFA;
+    font-weight: 700;
+  }
+
+  /* Tables */
+  .table-wrapper { overflow-x: auto; margin: 20px 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+
+  thead tr {
+    background: #0a0a0a;
+    color: #fff;
+  }
+
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  tbody tr:nth-child(even) { background: #f8f9fc; }
+  tbody tr:nth-child(odd) { background: #fff; }
+
+  tbody td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+    color: #1a1a1a;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* Post cards */
+  .post-card {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px 0;
+    position: relative;
+  }
+
+  .post-card .pilar-tag {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #f0f4ff;
+    color: #4B8DFA;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  .post-card h4 { margin-top: 0; font-size: 14px; color: #0a0a0a; }
+
+  .post-card .meta-row {
+    display: flex;
+    gap: 16px;
+    margin: 8px 0 14px;
+  }
+
+  .post-card .badge {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .badge-format { background: #fff0e6; color: #c05a00; }
+  .badge-day { background: #e6ffe6; color: #1a7a1a; }
+
+  .opening-box {
+    background: #f8f9fc;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    font-style: italic;
+    color: #333;
+    font-size: 13px;
+    border-left: 3px solid #cdd5e0;
+  }
+
+  .opening-box strong { font-style: normal; font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+
+  /* Template blocks */
+  .template-block {
+    background: #0a0a0a;
+    color: #e8e8e8;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin: 20px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+  .template-block .template-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #4B8DFA;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  /* Do/Don't */
+  .do-dont {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .do-col, .dont-col {
+    border-radius: 8px;
+    padding: 18px 20px;
+  }
+
+  .do-col { background: #f0faf0; border: 1px solid #c3e6c3; }
+  .dont-col { background: #fdf0f0; border: 1px solid #e6c3c3; }
+
+  .do-col h4 { color: #1a7a1a; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .dont-col h4 { color: #8a1a1a; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .do-col li, .dont-col li {
+    font-size: 12.5px;
+    margin-bottom: 8px;
+  }
+
+  .do-col li::before { content: "✓ "; color: #1a7a1a; font-weight: 700; }
+  .dont-col li::before { content: "✗ "; color: #8a1a1a; font-weight: 700; }
+  .do-col li, .dont-col li { list-style: none; }
+
+  /* Checklist */
+  .checklist li {
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .checklist li::before {
+    content: "☐";
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #4B8DFA;
+  }
+
+  /* Weekly schedule */
+  .week-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+
+  .week-day {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .week-day .day-header {
+    background: #0a0a0a;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .week-day .day-content {
+    padding: 14px;
+  }
+
+  .week-day .pilar {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4B8DFA;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .week-day .item {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 6px;
+  }
+
+  .week-day .item span:first-child {
+    font-weight: 600;
+    color: #333;
+    flex-shrink: 0;
+  }
+
+  /* Sources */
+  .sources {
+    background: #f8f9fc;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .sources h4 { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .sources li { font-size: 12px; color: #555; margin-bottom: 6px; }
+  .sources a { color: #4B8DFA; text-decoration: none; }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, #4B8DFA, transparent);
+    margin: 40px 0;
+  }
+
+  /* Highlight box */
+  .highlight {
+    background: #f0f4ff;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 13px;
+    color: #1a1a1a;
+    border: 1px solid #d0deff;
+  }
+
+  .highlight strong { color: #4B8DFA; }
+
+  /* ── Calendário 14 Posts ── */
+  .cal14-section {
+    margin-bottom: 48px;
+  }
+
+  .cal14-week {
+    margin-bottom: 32px;
+  }
+
+  .cal14-week-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .cal14-week-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+    background: #0a0a0a;
+    padding: 4px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .cal14-week-line {
+    flex: 1;
+    height: 1px;
+    background: #e8e8e8;
+  }
+
+  .cal14-posts {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }
+
+  .cal14-posts.two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cal14-card {
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cal14-card-head {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .cal14-card-head.pilar-lideranca { background: #eef3ff; }
+  .cal14-card-head.pilar-cultura   { background: #f0faf0; }
+  .cal14-card-head.pilar-prova     { background: #fff8ee; }
+
+  .cal14-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: #444;
+  }
+
+  .cal14-pilar-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .pilar-lideranca .cal14-pilar-badge { background: #d0deff; color: #1a3a9a; }
+  .pilar-cultura   .cal14-pilar-badge { background: #c3e6c3; color: #1a5a1a; }
+  .pilar-prova     .cal14-pilar-badge { background: #ffd9a0; color: #7a4a00; }
+
+  .cal14-card-body {
+    padding: 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cal14-titulo {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0a0a0a;
+    line-height: 1.4;
+  }
+
+  .cal14-opening {
+    font-size: 11.5px;
+    color: #555;
+    line-height: 1.6;
+    font-style: italic;
+    border-left: 2px solid #e0e0e0;
+    padding-left: 10px;
+    flex: 1;
+  }
+
+  .cal14-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 14px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafafa;
+  }
+
+  .cal14-meta-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    background: #f0f0f0;
+    color: #444;
+  }
+
+  .cal14-meta-badge.obj-autoridade  { background: #e8eaff; color: #3344cc; }
+  .cal14-meta-badge.obj-atracao     { background: #e8f5e8; color: #2a6a2a; }
+  .cal14-meta-badge.obj-engajamento { background: #fff3e0; color: #8a5500; }
+  .cal14-meta-badge.obj-conversao   { background: #fce8e8; color: #8a1a1a; }
+
+  .cal14-cta {
+    font-size: 10.5px;
+    color: #4B8DFA;
+    font-weight: 600;
+    padding: 0 14px 10px;
+  }
+
+  .cal14-outline {
+    padding: 0 14px 10px;
+  }
+
+  .cal14-outline ul {
+    padding-left: 14px;
+    margin: 0;
+  }
+
+  .cal14-outline ul li {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 3px;
+    line-height: 1.5;
+  }
+
+  .cal14-summary-table { margin-top: 32px; }
+
+  @media print {
+    .cal14-posts { grid-template-columns: 1fr 1fr 1fr; }
+    .cal14-posts.two-col { grid-template-columns: 1fr 1fr; }
+    .cal14-card { page-break-inside: avoid; }
+    .cal14-week { page-break-inside: avoid; }
+  }
+
+  /* Newsletter block */
+  .newsletter-block {
+    background: #0a0a0a;
+    border-radius: 10px;
+    padding: 32px 36px;
+    margin-bottom: 48px;
+    color: #fff;
+  }
+
+  .newsletter-block .nl-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #4B8DFA;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .newsletter-block h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    border-bottom: none;
+    margin-bottom: 6px;
+    padding-bottom: 0;
+  }
+
+  .newsletter-block .nl-subtitle {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 28px;
+    font-weight: 300;
+  }
+
+  .nl-pilares {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .nl-pilar {
+    background: #1a1a1a;
+    border-radius: 8px;
+    padding: 14px 16px;
+    border-top: 2px solid #4B8DFA;
+  }
+
+  .nl-pilar .nl-pilar-num {
+    font-size: 10px;
+    color: #4B8DFA;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .nl-pilar .nl-pilar-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #eee;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .nl-pilar .nl-pilar-desc {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.5;
+  }
+
+  .nl-proxima {
+    background: #111;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    border-left: 3px solid #4B8DFA;
+  }
+
+  .nl-proxima .nl-proxima-label {
+    font-size: 10px;
+    color: #4B8DFA;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .nl-proxima .nl-proxima-titulo {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .nl-proxima .nl-proxima-sub {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 14px;
+  }
+
+  .nl-secoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .nl-secao {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+
+  .nl-secao .nl-secao-head {
+    font-size: 11px;
+    font-weight: 700;
+    color: #eee;
+    margin-bottom: 8px;
+    display: block;
+    border-bottom: 1px solid #2a2a2a;
+    padding-bottom: 6px;
+  }
+
+  .nl-secao ul {
+    padding-left: 0;
+    margin-bottom: 0;
+    list-style: none;
+  }
+
+  .nl-secao ul li {
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 5px;
+    line-height: 1.5;
+    padding-left: 12px;
+    position: relative;
+  }
+
+  .nl-secao ul li::before {
+    content: "–";
+    position: absolute;
+    left: 0;
+    color: #4B8DFA;
+  }
+
+  .nl-ctas {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .nl-btn {
+    display: inline-block;
+    background: #4B8DFA;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    letter-spacing: 0.3px;
+  }
+
+  .nl-link {
+    font-size: 12px;
+    color: #4B8DFA;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .nl-calendario {
+    margin-top: 20px;
+  }
+
+  .nl-calendario .nl-cal-label {
+    font-size: 10px;
+    color: #555;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .nl-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .nl-cal-item {
+    background: #1a1a1a;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+
+  .nl-cal-item .nl-cal-date {
+    font-size: 10px;
+    color: #4B8DFA;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .nl-cal-item .nl-cal-tema {
+    font-size: 11px;
+    font-weight: 600;
+    color: #eee;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+
+  .nl-cal-item .nl-cal-obj {
+    font-size: 10px;
+    color: #666;
+  }
+
+  @media print {
+    .nl-pilares { grid-template-columns: 1fr 1fr 1fr; }
+    .nl-secoes { grid-template-columns: 1fr 1fr 1fr; }
+    .nl-cal-grid { grid-template-columns: repeat(4, 1fr); }
+    .newsletter-block { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+  <div class="tag">Documento Estratégico Confidencial</div>
+  <h1>Estratégia de Conteúdo<br><span>LinkedIn — Allu</span></h1>
+  <p class="subtitle">Employer Branding B2B | Padrão Executivo-Institucional<br>Referência Editorial: G4 Educação | LinkedIn 3x/semana + Newsletter toda quinta-feira</p>
+  <div class="meta">
+    <div class="meta-item">
+      <span class="label">Empresa</span>
+      <span class="value">Allu</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Canais</span>
+      <span class="value">LinkedIn + Newsletter</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Frequência</span>
+      <span class="value">Terça / Quarta / Quinta</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Elaborado em</span>
+      <span class="value">Abril 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEÚDO -->
+<div class="page">
+
+  <!-- NEWSLETTER FIXA -->
+  <div class="newsletter-block">
+    <span class="nl-eyebrow">Canal de Conteúdo — Fixo</span>
+    <h2>Newsletter da Allu — toda quinta-feira</h2>
+    <p class="nl-subtitle">Conteúdo semanal sobre mercado, carreira e cultura. Alinhado à estratégia de LinkedIn. Consistência é o ativo.</p>
+
+    <div class="nl-pilares">
+      <div class="nl-pilar">
+        <span class="nl-pilar-num">Pilar 01</span>
+        <span class="nl-pilar-title">Mercado &amp; Carreira</span>
+        <p class="nl-pilar-desc">Tendências do setor, dados de empregabilidade e habilidades em alta. Posiciona a Allu como referência de mercado.</p>
+      </div>
+      <div class="nl-pilar">
+        <span class="nl-pilar-num">Pilar 02</span>
+        <span class="nl-pilar-title">Cultura &amp; Pessoas</span>
+        <p class="nl-pilar-desc">Bastidores, histórias reais de colaboradores e práticas internas. Humaniza a marca e atrai talentos aderentes.</p>
+      </div>
+      <div class="nl-pilar">
+        <span class="nl-pilar-num">Pilar 03</span>
+        <span class="nl-pilar-title">Crescimento Aplicado</span>
+        <p class="nl-pilar-desc">Frameworks, aprendizados de gestão e cases práticos. Conteúdo acionável para quem quer evoluir na carreira.</p>
+      </div>
+    </div>
+
+    <!-- PRÓXIMA EDIÇÃO -->
+    <div class="nl-proxima">
+      <span class="nl-proxima-label">Próxima edição — Quinta-feira, 01/05/2026</span>
+      <div class="nl-proxima-titulo">O que o mercado vai exigir no 2º semestre</div>
+      <p class="nl-proxima-sub">Três movimentos que já estão redefinindo carreiras e o que a Allu está fazendo a respeito.</p>
+
+      <div class="nl-secoes">
+        <div class="nl-secao">
+          <span class="nl-secao-head">O cenário que ninguém está vendo ainda</span>
+          <ul>
+            <li>Reconfiguração silenciosa: vagas existem, mas critérios mudaram</li>
+            <li>Prioridade: adaptabilidade e execução sobre especialização pura</li>
+            <li>Quem entende esse movimento sai na frente</li>
+          </ul>
+        </div>
+        <div class="nl-secao">
+          <span class="nl-secao-head">3 habilidades em alta agora</span>
+          <ul>
+            <li>Decisão com dados incompletos</li>
+            <li>Comunicação clara em contextos multidisciplinares</li>
+            <li>Gestão de prioridades em alta demanda e baixo desperdício</li>
+          </ul>
+        </div>
+        <div class="nl-secao">
+          <span class="nl-secao-head">Como a Allu está se posicionando</span>
+          <ul>
+            <li>Times que operam com autonomia e responsabilidade real</li>
+            <li>Processo seletivo avalia competências — não só currículo</li>
+            <li>Se você se reconhece nesse perfil, esta edição é o seu sinal</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="nl-ctas">
+        <a href="https://allugator.com/vagas" class="nl-btn">Veja as vagas abertas</a>
+        <a href="mailto:talentos@allugator.com" class="nl-link">Responda este e-mail — queremos ouvir você</a>
+      </div>
+    </div>
+
+    <!-- CALENDÁRIO 4 SEMANAS -->
+    <div class="nl-calendario">
+      <span class="nl-cal-label">Calendário editorial — próximas 4 edições</span>
+      <div class="nl-cal-grid">
+        <div class="nl-cal-item">
+          <span class="nl-cal-date">01/05 — Semana 1</span>
+          <div class="nl-cal-tema">O que o mercado vai exigir no 2º semestre</div>
+          <div class="nl-cal-obj">Objetivo: Autoridade + Atração</div>
+        </div>
+        <div class="nl-cal-item">
+          <span class="nl-cal-date">08/05 — Semana 2</span>
+          <div class="nl-cal-tema">Crescer dentro de uma empresa: o que ninguém te conta</div>
+          <div class="nl-cal-obj">Objetivo: Engajamento + Atração</div>
+        </div>
+        <div class="nl-cal-item">
+          <span class="nl-cal-date">15/05 — Semana 3</span>
+          <div class="nl-cal-tema">Como construímos times de alta performance</div>
+          <div class="nl-cal-obj">Objetivo: Autoridade + Conversão</div>
+        </div>
+        <div class="nl-cal-item">
+          <span class="nl-cal-date">22/05 — Semana 4</span>
+          <div class="nl-cal-tema">Transparência radical: respondendo o que candidatos perguntam</div>
+          <div class="nl-cal-obj">Objetivo: Conversão + Confiança</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A) DIAGNÓSTICO -->
+  <div class="section">
+    <span class="section-label">A — Diagnóstico</span>
+    <h2>Posicionamento de Employer Branding Recomendado</h2>
+
+    <div class="bullet-block">
+      <ul>
+        <li><strong>Autoridade por resultado, não por enunciado.</strong> A Allu deve posicionar-se como empresa que forma e atrai profissionais de alta performance — comunicando isso por meio de dados, marcos concretos e histórias reais de crescimento interno, não por autoproclamação.</li>
+        <li><strong>Presença executiva combinada com cultura tangível.</strong> O LinkedIn institucional deve funcionar em sinergia com os perfis das lideranças (founders, heads de área), replicando o modelo G4: a página amplifica, os perfis pessoais humanizam e multiplicam alcance.</li>
+        <li><strong>EVP claro e repetido.</strong> A proposta de valor como empregadora — desenvolvimento acelerado, autonomia com responsabilidade, impacto direto no negócio — deve aparecer em diferentes formatos ao longo do mês, sem variar o núcleo da mensagem.</li>
+        <li><strong>Tom: formal-executivo, sem infantilização.</strong> Nenhum post deve parecer feito para TikTok ou Instagram. O leitor-alvo é um profissional de 25–40 anos que lê conteúdo de negócios no horário comercial e avalia a empresa como potencial empregadora.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- B) MATRIZ SEMANAL -->
+  <div class="section section-break">
+    <span class="section-label">B — Matriz Semanal</span>
+    <h2>Programação Fixa: Terça / Quarta / Quinta</h2>
+
+    <div class="week-grid">
+      <div class="week-day">
+        <div class="day-header">Terça-feira</div>
+        <div class="day-content">
+          <div class="pilar">Liderança & Visão de Mercado</div>
+          <div class="item"><span>Objetivo:</span> Thought leadership e credibilidade institucional</div>
+          <div class="item"><span>Formato:</span> Carrossel PDF ou post texto longo</div>
+          <div class="item"><span>Gancho:</span> Afirmação-tese + dado de mercado</div>
+          <div class="item"><span>CTA:</span> "Salve este conteúdo" / "Marque um profissional"</div>
+          <div class="item"><span>Exemplo:</span> "O que diferencia empresas que crescem em mercados saturados"</div>
+        </div>
+      </div>
+      <div class="week-day">
+        <div class="day-header">Quarta-feira</div>
+        <div class="day-content">
+          <div class="pilar">Cultura & Pessoas</div>
+          <div class="item"><span>Objetivo:</span> Employer branding direto e humanização</div>
+          <div class="item"><span>Formato:</span> Múltiplas imagens ou vídeo curto (30–60s)</div>
+          <div class="item"><span>Gancho:</span> Dado interno ou citação de colaborador</div>
+          <div class="item"><span>CTA:</span> "Conheça nossas vagas abertas"</div>
+          <div class="item"><span>Exemplo:</span> Depoimento real de colaborador sobre crescimento de carreira</div>
+        </div>
+      </div>
+      <div class="week-day">
+        <div class="day-header">Quinta-feira</div>
+        <div class="day-content">
+          <div class="pilar">Prova Social & Resultados</div>
+          <div class="item"><span>Objetivo:</span> Credibilidade e conversão de candidatos</div>
+          <div class="item"><span>Formato:</span> Carrossel com dados ou imagem única</div>
+          <div class="item"><span>Gancho:</span> Número concreto ou resultado verificável</div>
+          <div class="item"><span>CTA:</span> "Saiba mais" / "Acesse nossa página de carreiras"</div>
+          <div class="item"><span>Exemplo:</span> "X profissionais promovidos internamente nos últimos 12 meses"</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- C) 12 IDEIAS -->
+  <div class="section section-break">
+    <span class="section-label">C — Banco de Posts</span>
+    <h2>12 Ideias de Posts — 4 por Pilar</h2>
+
+    <h3>Pilar 1 — Liderança &amp; Visão de Mercado</h3>
+
+    <div class="post-card">
+      <span class="pilar-tag">Terça</span>
+      <h4>Post 1 — Por que empresas de alta performance investem em cultura antes de escalar</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Carrossel PDF (8–10 slides)</span>
+        <span class="badge badge-day">Terça-feira</span>
+      </div>
+      <ul>
+        <li>Slide 1: Afirmação-tese (gancho)</li>
+        <li>Slide 2: O erro mais comum de empresas em crescimento acelerado</li>
+        <li>Slides 3–5: Os 3 pilares de cultura que sustentam escala</li>
+        <li>Slides 6–7: O que a Allu faz de diferente</li>
+        <li>Slide 8: Dado ou referência externa | Slide 9: CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Empresas que escalam sem estrutura de cultura não escalam — elas expandem o caos. Os líderes que entendem isso antes dos demais têm uma vantagem competitiva que nenhum investimento financeiro compra rapidamente."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Terça</span>
+      <h4>Post 2 — O mercado de [área de atuação] em 2025: o que mudou e o que ainda vai mudar</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Post texto longo (1.200–1.800 car.)</span>
+        <span class="badge badge-day">Terça-feira</span>
+      </div>
+      <ul>
+        <li>Parágrafo 1: Dado de mercado como gancho</li>
+        <li>Parágrafos 2–4: 3 mudanças estruturais observadas</li>
+        <li>Parágrafo 5: Implicação para profissionais e empresas</li>
+        <li>Parágrafo final: Posicionamento da Allu + CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Em 2024, [dado de mercado verificável]. Esse número não é só uma estatística — é o sinal de uma transformação estrutural que a maioria das empresas ainda não processou."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Terça</span>
+      <h4>Post 3 — 3 decisões que tomamos e que aceleraram o crescimento da Allu</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Carrossel PDF (6–8 slides)</span>
+        <span class="badge badge-day">Terça-feira</span>
+      </div>
+      <ul>
+        <li>Slide 1: "Nem toda decisão difícil é óbvia. Algumas só fazem sentido depois."</li>
+        <li>Slides 2–4: Uma decisão por slide (contexto, dilema e resultado)</li>
+        <li>Slide 5: O que aprendemos | Slide 6: CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Construir uma empresa é uma sequência de apostas calculadas. Algumas acertamos na primeira tentativa. Outras custaram aprendizado caro. Estas três, em particular, mudaram a trajetória da Allu."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Terça</span>
+      <h4>Post 4 — O que procuramos em um profissional — e por que competência técnica é apenas o ponto de partida</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Post texto longo</span>
+        <span class="badge badge-day">Terça-feira</span>
+      </div>
+      <ul>
+        <li>Abertura: afirmação sobre o critério de contratação da Allu</li>
+        <li>Desenvolvimento: 4 atributos valorizados (com explicação de cada)</li>
+        <li>Fechamento: convite para quem se identifica</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Contratar bem é uma das competências mais difíceis de desenvolver em uma empresa. Ao longo dos últimos anos, refinamos o que buscamos em um profissional — e técnica, embora necessária, está longe de ser suficiente."
+      </div>
+    </div>
+
+    <h3>Pilar 2 — Cultura &amp; Pessoas</h3>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quarta</span>
+      <h4>Post 5 — De [cargo de entrada] a [cargo atual]: a trajetória de [Nome] na Allu</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Múltiplas imagens (3–5 fotos reais)</span>
+        <span class="badge badge-day">Quarta-feira</span>
+      </div>
+      <ul>
+        <li>Foto 1: Colaborador em contexto de trabalho</li>
+        <li>Legenda: Apresentação da trajetória (cargo inicial → atual)</li>
+        <li>Dados: Tempo na empresa, áreas pelas quais passou</li>
+        <li>Citação direta do colaborador (1–2 frases reais)</li>
+        <li>CTA: "Conheça nossas oportunidades"</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Em [mês/ano], [Nome] ingressou na Allu como [cargo]. [X meses/anos] depois, lidera [área/projeto]. Esta é a trajetória dela — contada por ela mesma."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quarta</span>
+      <h4>Post 6 — Como é trabalhar na Allu: o que nossos colaboradores dizem (e o que fazemos para merecer)</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Carrossel PDF com depoimentos reais</span>
+        <span class="badge badge-day">Quarta-feira</span>
+      </div>
+      <ul>
+        <li>Slide 1: "Você saberia responder por que alguém escolheria trabalhar na sua empresa?"</li>
+        <li>Slides 2–5: Um depoimento por slide (foto + citação real + nome e cargo)</li>
+        <li>Slide 6: O que estruturamos para sustentar esses resultados</li>
+        <li>Slide 7: CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Employer branding não é o que uma empresa diz sobre si mesma. É o que seus colaboradores dizem quando ninguém está pedindo."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quarta</span>
+      <h4>Post 7 — Por dentro da Allu: como estruturamos [processo, ritual ou prática interna]</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Vídeo curto (30–60s) ou imagem + legenda longa</span>
+        <span class="badge badge-day">Quarta-feira</span>
+      </div>
+      <ul>
+        <li>Contexto: por que esse processo existe</li>
+        <li>Como funciona na prática (3 etapas ou elementos)</li>
+        <li>Resultado: o que ele gera para as pessoas e para o negócio + CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Toda empresa tem rituais. Os melhores não são criados para parecer bem em apresentações — são criados para que as pessoas trabalhem melhor. Este é um dos nossos."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quarta</span>
+      <h4>Post 8 — O que a Allu oferece além do salário — e por que cada benefício foi escolhido com intenção</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Carrossel PDF (6 slides)</span>
+        <span class="badge badge-day">Quarta-feira</span>
+      </div>
+      <ul>
+        <li>Slide 1: "Benefício não é lista. É escolha."</li>
+        <li>Slides 2–5: Um benefício por slide, com a intenção por trás dele</li>
+        <li>Slide 6: CTA para página de carreiras</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "É fácil copiar um pacote de benefícios. É difícil construir um que faça sentido para o perfil de profissional que você quer atrair. Na Allu, cada item da nossa proposta tem um porquê."
+      </div>
+    </div>
+
+    <h3>Pilar 3 — Prova Social &amp; Resultados</h3>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quinta</span>
+      <h4>Post 9 — [Número] profissionais. [Número] promoções internas. O que isso diz sobre a Allu</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Imagem única com dado central + legenda</span>
+        <span class="badge badge-day">Quinta-feira</span>
+      </div>
+      <ul>
+        <li>Dado principal em destaque visual</li>
+        <li>Legenda: contexto (período, critérios), o que motivou esse resultado, o que vem a seguir</li>
+        <li>CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Em [período], [X]% dos profissionais promovidos na Allu vieram de movimentações internas. Esse número não é acidente — é consequência de um processo deliberado de desenvolvimento."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quinta</span>
+      <h4>Post 10 — Allu entre as [premiação ou reconhecimento]: o que significa e o que ainda queremos melhorar</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Post texto + imagem da premiação</span>
+        <span class="badge badge-day">Quinta-feira</span>
+      </div>
+      <ul>
+        <li>O que é o reconhecimento e quem o concede</li>
+        <li>Por que a Allu foi indicada/selecionada</li>
+        <li>O que ainda é prioridade de melhoria (transparência institucional)</li>
+        <li>CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Reconhecimentos externos importam — não porque validam o que já sabíamos, mas porque criam responsabilidade pública com o que ainda precisamos evoluir."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quinta</span>
+      <h4>Post 11 — Case interno: como [equipe] entregou [resultado] em [prazo]</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Carrossel PDF (6–8 slides)</span>
+        <span class="badge badge-day">Quinta-feira</span>
+      </div>
+      <ul>
+        <li>Slide 1: Resultado como gancho | Slide 2: Contexto do desafio</li>
+        <li>Slides 3–5: As etapas da execução</li>
+        <li>Slide 6: Resultado final com dados | Slide 7: O que esse time tem em comum (EVP)</li>
+        <li>Slide 8: CTA</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Em [mês], o time de [área] da Allu tinha um prazo de [X dias] e um desafio que, na prática, exigia mais do que estava no escopo. O resultado final superou a meta em [Y%]. Esta é a história de como chegaram lá."
+      </div>
+    </div>
+
+    <div class="post-card">
+      <span class="pilar-tag">Quinta</span>
+      <h4>Post 12 — O que candidatos perguntam antes de aceitar uma oferta na Allu — e nossas respostas reais</h4>
+      <div class="meta-row">
+        <span class="badge badge-format">Post texto longo ou carrossel Q&amp;A</span>
+        <span class="badge badge-day">Quinta-feira</span>
+      </div>
+      <ul>
+        <li>Introdução: por que responder isso publicamente</li>
+        <li>5–6 perguntas reais dos processos seletivos + resposta direta e honesta</li>
+        <li>Fechamento: convite para quem quer fazer mais perguntas</li>
+      </ul>
+      <div class="opening-box">
+        <strong>Opening</strong>
+        "Transparência no processo seletivo não é vulnerabilidade — é diferencial. Compilamos as perguntas mais frequentes de candidatos nos últimos processos e respondemos aqui, sem filtro institucional."
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- D) GUIA DE PADRÕES -->
+  <div class="section section-break">
+    <span class="section-label">D — Guia de Padrões</span>
+    <h2>Do / Don't &amp; Padrões Editoriais</h2>
+
+    <div class="do-dont">
+      <div class="do-col">
+        <h4>✅ DO</h4>
+        <ul>
+          <li>Abrir com afirmação-tese ou dado concreto</li>
+          <li>Usar dados internos verificáveis</li>
+          <li>Tom executivo sênior falando com par</li>
+          <li>Carrossel com estrutura clara (tese → desenvolvimento → CTA)</li>
+          <li>Depoimentos reais com nome e cargo</li>
+          <li>Hashtags temáticas (máx. 5, no final)</li>
+          <li>Emojis com função estrutural (máx. 3 por post)</li>
+          <li>Transparência sobre desafios e melhorias</li>
+          <li>CTA direto e único</li>
+          <li>Frases curtas, parágrafos de 2–3 linhas</li>
+        </ul>
+      </div>
+      <div class="dont-col">
+        <h4>❌ DON'T</h4>
+        <ul>
+          <li>Abrir com "Hoje quero falar sobre..."</li>
+          <li>Usar dados sem fonte ou inventados</li>
+          <li>Tom de influencer falando para fãs</li>
+          <li>Carrossel apenas decorativo sem hierarquia</li>
+          <li>Depoimentos genéricos ou anônimos</li>
+          <li>Bloco de 15+ hashtags no meio do texto</li>
+          <li>Emojis decorativos ou em excesso</li>
+          <li>Tom de propaganda corporativa sem substância</li>
+          <li>Dois ou mais CTAs concorrentes no mesmo post</li>
+          <li>Parágrafos longos sem quebra visual</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Tamanho Sugerido por Formato</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Formato</th><th>Tamanho Recomendado</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Post texto</td><td>900–1.800 caracteres (com quebras de linha a cada 2–3 linhas)</td></tr>
+          <tr><td>Carrossel PDF</td><td>6–10 slides; 1 ideia por slide; título curto + 3–5 bullets ou dado central</td></tr>
+          <tr><td>Legenda de múltiplas imagens</td><td>600–1.200 caracteres</td></tr>
+          <tr><td>Legenda de vídeo</td><td>400–800 caracteres (o vídeo carrega o conteúdo)</td></tr>
+          <tr><td>Imagem única + dado</td><td>500–900 caracteres</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Frequência por Tipo de Conteúdo (mensal)</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Tipo de Conteúdo</th><th>Frequência Sugerida/Mês</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Thought leadership / liderança</td><td>4x (toda terça)</td></tr>
+          <tr><td>Cultura e pessoas (depoimentos, bastidores)</td><td>4x (toda quarta)</td></tr>
+          <tr><td>Prova social e resultados (dados, cases, prêmios)</td><td>4x (toda quinta)</td></tr>
+          <tr><td>Anúncio de vaga</td><td>Máx. 2x/mês — integrado a post de cultura ou resultado</td></tr>
+          <tr><td>Employee advocacy (colaboradores repostando)</td><td>4–8 reposts/mês encorajados</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Checklist de Revisão (antes de publicar)</h3>
+    <ul class="checklist">
+      <li>O primeiro parágrafo funciona como gancho sem precisar do restante?</li>
+      <li>O tom está no nível executivo-formal (sem gírias, sem excesso de emoji)?</li>
+      <li>Há pelo menos um dado, citação real ou resultado concreto?</li>
+      <li>O CTA é único e direto?</li>
+      <li>O post existe sem depender de link externo para fazer sentido?</li>
+      <li>Há pelo menos uma imagem, slide ou elemento visual?</li>
+      <li>O texto foi revisado por alguém além de quem o escreveu?</li>
+      <li>As hashtags estão no final (máx. 5)?</li>
+      <li>O post seria publicado com conforto pela liderança da Allu?</li>
+    </ul>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- E) TEMPLATES -->
+  <div class="section section-break">
+    <span class="section-label">E — Templates Reutilizáveis</span>
+    <h2>3 Estruturas Prontas</h2>
+
+    <div class="template-block"><span class="template-title">Template 1 — Prova Social / Case</span>[RESULTADO EM DESTAQUE] — um número, um marco, uma conquista verificável.
+
+Em [período], [equipe/empresa/pessoa] [atingiu/entregou/conquistou] [resultado].
+
+O desafio era [contexto breve do problema ou cenário].
+
+A abordagem envolveu:
+→ [Etapa ou decisão 1]
+→ [Etapa ou decisão 2]
+→ [Etapa ou decisão 3]
+
+O resultado final: [dado concreto].
+
+O que isso diz sobre [a Allu / o time / o mercado]:
+[1–2 frases de análise ou aprendizado].
+
+[CTA direto]
+#hashtag1 #hashtag2 #hashtag3</div>
+
+    <div class="template-block"><span class="template-title">Template 2 — Anúncio de Vaga</span>[Nome da vaga] | [Área] | [Modelo: Remoto / Híbrido / Presencial]
+
+Na Allu, [o que essa posição faz de relevante para o negócio — 1 frase].
+
+O que você vai encontrar nessa posição:
+→ [Responsabilidade 1]
+→ [Responsabilidade 2]
+→ [Responsabilidade 3]
+
+O que buscamos em quem vai ocupar essa cadeira:
+→ [Critério técnico ou comportamental 1]
+→ [Critério 2]
+→ [Critério 3]
+
+O que a Allu oferece:
+→ [Benefício ou diferencial 1]
+→ [Benefício ou diferencial 2]
+
+[Link da vaga ou instrução para candidatura]
+
+Conhece alguém que pode ter interesse? Compartilhe este post.
+#vagas #[área] #allucareers</div>
+
+    <div class="template-block"><span class="template-title">Template 3 — Bastidores / Cultura</span>[Afirmação sobre cultura ou prática interna — 1 frase direta].
+
+Na Allu, [nome do ritual/processo/prática] existe porque [razão estratégica ou humana — 1 frase].
+
+Como funciona na prática:
+→ [Elemento 1]
+→ [Elemento 2]
+→ [Elemento 3]
+
+O impacto que observamos:
+[Dado interno ou percepção qualitativa verificável — 1–2 frases].
+
+[Nome de colaborador ou time que protagoniza esse processo — opcional, com autorização].
+
+[CTA: "Quer conhecer mais sobre como trabalhamos?" + link de carreiras]
+#cultura #allucareers #pessoas</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CONSISTÊNCIA 4 SEMANAS -->
+  <div class="section section-break">
+    <span class="section-label">Plano de Execução</span>
+    <h2>Consistência Visual e Editorial — 4 Semanas</h2>
+
+    <h3>Identidade Visual</h3>
+    <div class="bullet-block">
+      <ul>
+        <li><strong>Paleta fixa:</strong> usar as cores institucionais da Allu em todos os carrosséis. Não variar por "mood" ou calendário sazonal.</li>
+        <li><strong>Tipografia:</strong> fontes sem serifa, leitura limpa. Hierarquia visual clara: título → dado principal → texto de apoio.</li>
+        <li><strong>Fotografia:</strong> preferir fotos reais de colaboradores em contexto de trabalho. Evitar banco de imagens com poses genéricas.</li>
+        <li><strong>Logo:</strong> sempre posicionada no mesmo lugar em carrosséis (canto superior ou inferior direito).</li>
+      </ul>
+    </div>
+
+    <h3>Ritmo de 4 Semanas</h3>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>Semana</th><th>Terça (Liderança)</th><th>Quarta (Cultura)</th><th>Quinta (Prova Social)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Semana 1</strong></td>
+            <td>Visão de mercado / tendência do setor</td>
+            <td>Depoimento de colaborador (carrossel)</td>
+            <td>Dado de resultado interno</td>
+          </tr>
+          <tr>
+            <td><strong>Semana 2</strong></td>
+            <td>Decisão estratégica da liderança</td>
+            <td>Bastidores de processo interno</td>
+            <td>Case de time ou projeto</td>
+          </tr>
+          <tr>
+            <td><strong>Semana 3</strong></td>
+            <td>O que buscamos em profissionais + EVP</td>
+            <td>Vídeo curto de cultura</td>
+            <td>Prêmio ou reconhecimento externo</td>
+          </tr>
+          <tr>
+            <td><strong>Semana 4</strong></td>
+            <td>Framework ou aprendizado de gestão</td>
+            <td>Post de vaga integrado à narrativa de cultura</td>
+            <td>Perguntas reais de candidatos respondidas</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Para não parecer juvenil — 5 regras inegociáveis</h3>
+    <div class="bullet-block">
+      <ul>
+        <li>Nunca publique um post apenas porque "é o dia". Cada publicação deve ter uma razão editorial clara.</li>
+        <li>Evite tendências de formato das redes de entretenimento (memes, challenges, áudios virais).</li>
+        <li>Mantenha a voz consistente — se mais de uma pessoa produz conteúdo, um único revisor deve ter a palavra final sobre tom.</li>
+        <li>Dados sempre com fonte — mesmo que seja "dados internos Allu". A ausência de fonte enfraquece credibilidade.</li>
+        <li>Liderança como voz, não como personagem — founders e heads podem aparecer, mas sempre com substância, nunca em formato de "bastidores pessoais" desconectados do negócio.</li>
+      </ul>
+    </div>
+
+    <div class="highlight">
+      <strong>Regra de revisão mensal:</strong> ao final de cada mês, identificar o post de maior engajamento e replicar o <strong>formato e estrutura</strong> (não o tema) no mês seguinte. Métricas de referência: impressões, taxa de engajamento, comentários com 15+ palavras (indicador de qualidade pelo algoritmo LinkedIn 2025).
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CALENDÁRIO 14 POSTS -->
+  <div class="section cal14-section section-break">
+    <span class="section-label">F — Calendário Editorial</span>
+    <h2>14 Posts Planejados — 06/05 a 04/06/2026</h2>
+    <p style="margin-bottom:28px; color:#555;">Distribuição: Terça (Liderança &amp; Visão), Quarta (Cultura &amp; Pessoas), Quinta (Prova Social &amp; Resultados). Formatos variados, sem repetição de ângulo. Dados hipotéticos sinalizados — validar com time interno antes de publicar.</p>
+
+    <!-- SEMANA 1 -->
+    <div class="cal14-week">
+      <div class="cal14-week-header">
+        <span class="cal14-week-label">Semana 1 — 06 a 08/05</span>
+        <div class="cal14-week-line"></div>
+      </div>
+      <div class="cal14-posts">
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-lideranca">
+            <span class="cal14-date">Ter, 06/05</span>
+            <span class="cal14-pilar-badge">Liderança</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">O mercado de trabalho não está em crise. Está em ruptura.</div>
+            <div class="cal14-opening">"Toda vez que o desemprego sobe, ouvimos que o mercado está em crise. Mas crise pressupõe retorno ao estado anterior. O que estamos vivendo é diferente: é uma ruptura estrutural."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Distinção conceitual: crise vs. ruptura de mercado</li>
+              <li>Novo perfil do profissional disputado: híbrido técnico-comportamental</li>
+              <li>Por que modelos tradicionais de recrutamento amplificam o problema</li>
+              <li>O papel das plataformas de carreira como infraestrutura estratégica</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Texto longo</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "O que sua empresa está fazendo diferente para atrair quem não está procurando emprego?"</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-cultura">
+            <span class="cal14-date">Qua, 07/05</span>
+            <span class="cal14-pilar-badge">Cultura</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">"Entrei como analista. Hoje lidero o time que me contratou."</div>
+            <div class="cal14-opening">"Trajetórias como a da [Nome] não acontecem por acaso. Acontecem quando a empresa decide, intencionalmente, que crescimento interno é estratégia de negócio."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Quem era ao entrar e o contexto da contratação</li>
+              <li>Momentos de virada na trajetória interna</li>
+              <li>O que a empresa ofereceu: mentorias, projetos, promoções</li>
+              <li>Citação direta da colaboradora</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Múltiplas imagens</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Quer fazer parte de um ambiente onde sua evolução é levada a sério?"</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-prova">
+            <span class="cal14-date">Qui, 08/05</span>
+            <span class="cal14-pilar-badge">Prova Social</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">3 em cada 4 contratações via Allu passam pelo período de experiência. Eis o porquê.</div>
+            <div class="cal14-opening">"76% dos profissionais alocados via Allu concluem o período de experiência com avaliação positiva. A média do setor fica abaixo de 55%." <em>(hipotético — validar)</em></div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>O dado central e o que significa para empresas contratantes</li>
+              <li>Metodologia de matching: além do currículo</li>
+              <li>Custo real de uma contratação malsucedida (1,5x–3x o salário)</li>
+              <li>Resultado: redução de turnover nos primeiros 90 dias</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Imagem + dado</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Quer entender como nossa metodologia funciona na prática?"</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SEMANA 2 -->
+    <div class="cal14-week">
+      <div class="cal14-week-header">
+        <span class="cal14-week-label">Semana 2 — 13 a 15/05</span>
+        <div class="cal14-week-line"></div>
+      </div>
+      <div class="cal14-posts">
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-lideranca">
+            <span class="cal14-date">Ter, 13/05</span>
+            <span class="cal14-pilar-badge">Liderança</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">As 5 armadilhas do RH estratégico em 2026</div>
+            <div class="cal14-opening">"O RH nunca teve tanto acesso a dados. E nunca tomou tantas decisões erradas com tanta confiança. Mapeamos os cinco padrões de erro mais comuns."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Confundir velocidade com qualidade de contratação</li>
+              <li>Usar dados históricos para prever habilidades futuras</li>
+              <li>Tratar employer branding como comunicação, não estratégia</li>
+              <li>Medir satisfação sem medir impacto em resultado</li>
+              <li>Terceirizar a cultura para o time de RH</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Carrossel PDF — 8 slides</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Salve. Qual armadilha você reconhece no seu contexto? Comente o número."</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-cultura">
+            <span class="cal14-date">Qua, 14/05</span>
+            <span class="cal14-pilar-badge">Cultura</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">Bastidores: como tomamos decisões difíceis na Allu</div>
+            <div class="cal14-opening">"Toda empresa diz que tem cultura de transparência. Poucas mostram o que acontece quando a decisão é difícil e o consenso não existe."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Apresentação do líder entrevistado e contexto</li>
+              <li>Exemplo real de decisão difícil nos últimos 12 meses</li>
+              <li>O processo: como opiniões divergentes são tratadas</li>
+              <li>O aprendizado sobre cultura da empresa</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Vídeo 45–60s</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Na sua empresa, decisões difíceis são tomadas com transparência ou anunciadas de cima para baixo?"</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-prova">
+            <span class="cal14-date">Qui, 15/05</span>
+            <span class="cal14-pilar-badge">Prova Social</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">Como a [Empresa Parceira] reduziu 40% do tempo de onboarding com a Allu</div>
+            <div class="cal14-opening">"Onboarding longo não é só custo operacional. É sinal de que o profissional certo ainda não chegou. Quando nos procuraram, o problema não era falta de candidatos."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Contexto: alta rotatividade nos primeiros 60 dias</li>
+              <li>Diagnóstico: onde o processo anterior falhava</li>
+              <li>Solução: matching comportamental + briefing de cultura</li>
+              <li>Resultado: -40% onboarding, +28% retenção em 90 dias <em>(hipotético)</em></li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Texto longo — case</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Se sua empresa enfrenta turnover nos primeiros 90 dias, vale uma conversa."</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SEMANA 3 -->
+    <div class="cal14-week">
+      <div class="cal14-week-header">
+        <span class="cal14-week-label">Semana 3 — 20 a 22/05</span>
+        <div class="cal14-week-line"></div>
+      </div>
+      <div class="cal14-posts">
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-lideranca">
+            <span class="cal14-date">Ter, 20/05</span>
+            <span class="cal14-pilar-badge">Liderança</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">A IA não vai roubar empregos. Vai tornar alguns líderes obsoletos.</div>
+            <div class="cal14-opening">"O debate sobre IA e emprego está mal formulado. A pergunta não é 'quais funções vão desaparecer?' A pergunta certa é: 'quais lideranças não vão sobreviver à transição?'"</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Por que "IA substitui tarefas, não pessoas" é insuficiente</li>
+              <li>Perfil do líder que a IA torna redundante</li>
+              <li>Perfil do líder que a IA amplifica</li>
+              <li>O que isso significa para quem contrata líderes agora</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Texto longo</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Qual competência de liderança nenhuma IA vai replicar? Deixe sua resposta."</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-cultura">
+            <span class="cal14-date">Qua, 21/05</span>
+            <span class="cal14-pilar-badge">Cultura + Vaga</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">Estamos contratando. Mas só queremos quem faz essa pergunta.</div>
+            <div class="cal14-opening">"A maioria chega com a pergunta errada: 'O que a Allu pode fazer pela minha carreira?' Os que avançam chegam com outra: 'Que problema da Allu eu posso ajudar a resolver?'"</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Diferença de mentalidade: estabilidade vs. impacto</li>
+              <li>O que a Allu procura além de hard skills</li>
+              <li>Comportamentos que fazem diferença nas entrevistas</li>
+              <li>A vaga em aberto integrada à narrativa</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Imagem tipográfica</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "A vaga completa está nos comentários. Se conhece alguém com esse perfil, marque-o."</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-prova">
+            <span class="cal14-date">Qui, 22/05</span>
+            <span class="cal14-pilar-badge">Prova Social</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">NPS interno de 78. O que fazemos para manter esse número.</div>
+            <div class="cal14-opening">"NPS de colaborador acima de 70 é considerado excelente pelo mercado. O nosso está em 78 — e subiu 12 pontos nos últimos 18 meses. Não foi por acidente." <em>(hipotético — validar)</em></div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>O que é eNPS e por que importa mais que satisfação declarativa</li>
+              <li>3 iniciativas que mais impactaram o índice</li>
+              <li>O que não funcionou — transparência sobre o processo</li>
+              <li>Próximos passos em 2026</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Carrossel PDF — 6 slides</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Se quiser receber o framework de escuta ativa, comente 'QUERO'."</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SEMANA 4 -->
+    <div class="cal14-week">
+      <div class="cal14-week-header">
+        <span class="cal14-week-label">Semana 4 — 27 a 29/05</span>
+        <div class="cal14-week-line"></div>
+      </div>
+      <div class="cal14-posts">
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-lideranca">
+            <span class="cal14-date">Ter, 27/05</span>
+            <span class="cal14-pilar-badge">Liderança</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">Employer Branding não é marketing de RH. É vantagem competitiva.</div>
+            <div class="cal14-opening">"Empresas que tratam employer branding como campanha de comunicação estão perdendo a batalha por talentos antes mesmo de abrir uma vaga."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Custo de ignorar EB: dados de mercado sobre CPH</li>
+              <li>EVP declarado vs. EVP percebido — o gap que destrói reputação</li>
+              <li>4 pilares de uma marca empregadora sólida</li>
+              <li>O LinkedIn como primeiro ponto de contato de talentos</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Carrossel PDF — 7 slides</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Salve. Se sua empresa ainda não tem EVP claro, isso é urgente — não opcional."</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-cultura">
+            <span class="cal14-date">Qua, 28/05</span>
+            <span class="cal14-pilar-badge">Cultura</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">"Pedi demissão de uma grande empresa para vir para a Allu. Não me arrependi."</div>
+            <div class="cal14-opening">"Deixar uma empresa com nome conhecido no mercado é uma decisão que poucos tomam sem hesitação. [Nome] tomou — e nos contou o que pesou na balança."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>De onde veio e por que saiu da empresa anterior</li>
+              <li>O que o atraiu para a Allu além do salário</li>
+              <li>O que encontrou de diferente na prática</li>
+              <li>O momento em que sentiu que havia feito a escolha certa</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Múltiplas imagens</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Siga nossa página. E se quiser fazer parte, as vagas estão nos comentários."</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-prova">
+            <span class="cal14-date">Qui, 29/05</span>
+            <span class="cal14-pilar-badge">Prova Social</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">1.200 profissionais alocados em 2025. O que aprendemos.</div>
+            <div class="cal14-opening">"Em 2025, a Allu alocou mais de 1.200 profissionais. Esse volume gerou algo mais valioso do que receita: aprendizado sistemático sobre o que separa uma contratação excelente de uma adequada." <em>(hipotético — validar)</em></div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>3 variáveis que mais predizem sucesso nos primeiros 6 meses</li>
+              <li>Setor e porte importam menos que clareza do gestor</li>
+              <li>Diversidade de trajetória como preditor de inovação</li>
+              <li>O que isso muda na operação da Allu hoje</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Texto longo + dados</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Compilamos esses aprendizados em um relatório. Comente 'RELATÓRIO' para receber."</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SEMANA 5 -->
+    <div class="cal14-week">
+      <div class="cal14-week-header">
+        <span class="cal14-week-label">Semana 5 — 03 a 04/06</span>
+        <div class="cal14-week-line"></div>
+      </div>
+      <div class="cal14-posts two-col">
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-lideranca">
+            <span class="cal14-date">Ter, 03/06</span>
+            <span class="cal14-pilar-badge">Liderança</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">O profissional que toda empresa quer contratar não está no LinkedIn.</div>
+            <div class="cal14-opening">"O talento mais disputado não atualiza currículo. Não responde InMail. Não está em processo seletivo. Está entregando resultado em alguma empresa — e só vai se mover se a oportunidade certa aparecer da forma certa."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Talento passivo: +70% da força qualificada (dado de mercado)</li>
+              <li>Por que estratégias tradicionais de sourcing falham com esse perfil</li>
+              <li>O que atrai o talento passivo: reputação, liderança, propósito</li>
+              <li>EB como ferramenta de atração indireta e de longo prazo</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Texto longo</span>
+            <span class="cal14-meta-badge obj-autoridade">Autoridade</span>
+            <span class="cal14-meta-badge obj-conversao">Conversão</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Se os melhores candidatos não chegam até você, o problema pode não ser o processo. Vamos conversar?"</div>
+        </div>
+
+        <div class="cal14-card">
+          <div class="cal14-card-head pilar-cultura">
+            <span class="cal14-date">Qua, 04/06</span>
+            <span class="cal14-pilar-badge">Cultura</span>
+          </div>
+          <div class="cal14-card-body">
+            <div class="cal14-titulo">Um ano de Allu: o que [Nome] diria para si mesmo no primeiro dia.</div>
+            <div class="cal14-opening">"Pedimos a [Nome] que gravasse uma mensagem para o profissional que ele era há exatamente um ano — no primeiro dia de Allu. O que ele disse resume melhor do que qualquer descrição de vaga o que é trabalhar aqui."</div>
+          </div>
+          <div class="cal14-outline">
+            <ul>
+              <li>Apresentação: cargo, tempo de casa</li>
+              <li>A primeira impressão real — o que não estava no processo seletivo</li>
+              <li>O maior aprendizado do primeiro ano</li>
+              <li>O conselho para o "eu do primeiro dia"</li>
+            </ul>
+          </div>
+          <div class="cal14-card-meta">
+            <span class="cal14-meta-badge">Vídeo 45–60s</span>
+            <span class="cal14-meta-badge obj-atracao">Atração</span>
+            <span class="cal14-meta-badge obj-engajamento">Engajamento</span>
+          </div>
+          <div class="cal14-cta">→ CTA: "Se está considerando uma mudança de carreira, comece pelos comentários — respondemos a todos."</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABELA RESUMO -->
+    <div class="cal14-summary-table">
+      <h3>Resumo Executivo — 14 Posts</h3>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Data</th><th>Pilar</th><th>Título</th><th>Formato</th><th>Objetivo</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Ter 06/05</td><td>Liderança</td><td>O mercado não está em crise. Está em ruptura.</td><td>Texto longo</td><td>Autoridade</td></tr>
+            <tr><td>2</td><td>Qua 07/05</td><td>Cultura</td><td>"Entrei como analista. Hoje lidero o time que me contratou."</td><td>Múltiplas imagens</td><td>Atração + Engajamento</td></tr>
+            <tr><td>3</td><td>Qui 08/05</td><td>Prova Social</td><td>3 em cada 4 contratações via Allu passam pelo período de experiência.</td><td>Imagem + dado</td><td>Conversão</td></tr>
+            <tr><td>4</td><td>Ter 13/05</td><td>Liderança</td><td>As 5 armadilhas do RH estratégico em 2026</td><td>Carrossel PDF — 8 slides</td><td>Autoridade + Engajamento</td></tr>
+            <tr><td>5</td><td>Qua 14/05</td><td>Cultura</td><td>Bastidores: como tomamos decisões difíceis na Allu</td><td>Vídeo 45–60s</td><td>Engajamento + Atração</td></tr>
+            <tr><td>6</td><td>Qui 15/05</td><td>Prova Social</td><td>Como a [Empresa] reduziu 40% do tempo de onboarding</td><td>Texto longo — case</td><td>Conversão</td></tr>
+            <tr><td>7</td><td>Ter 20/05</td><td>Liderança</td><td>A IA não vai roubar empregos. Vai tornar alguns líderes obsoletos.</td><td>Texto longo</td><td>Autoridade + Engajamento</td></tr>
+            <tr><td>8</td><td>Qua 21/05</td><td>Cultura + Vaga</td><td>Estamos contratando. Mas só queremos quem faz essa pergunta.</td><td>Imagem tipográfica</td><td>Atração + Conversão</td></tr>
+            <tr><td>9</td><td>Qui 22/05</td><td>Prova Social</td><td>NPS interno de 78. O que fazemos para manter esse número.</td><td>Carrossel PDF — 6 slides</td><td>Autoridade + Atração</td></tr>
+            <tr><td>10</td><td>Ter 27/05</td><td>Liderança</td><td>Employer Branding não é marketing de RH. É vantagem competitiva.</td><td>Carrossel PDF — 7 slides</td><td>Autoridade + Conversão</td></tr>
+            <tr><td>11</td><td>Qua 28/05</td><td>Cultura</td><td>"Pedi demissão de uma grande empresa para vir para a Allu."</td><td>Múltiplas imagens</td><td>Atração + Engajamento</td></tr>
+            <tr><td>12</td><td>Qui 29/05</td><td>Prova Social</td><td>1.200 profissionais alocados em 2025. O que aprendemos.</td><td>Texto longo + dados</td><td>Autoridade + Conversão</td></tr>
+            <tr><td>13</td><td>Ter 03/06</td><td>Liderança</td><td>O profissional que toda empresa quer contratar não está no LinkedIn.</td><td>Texto longo</td><td>Autoridade + Conversão</td></tr>
+            <tr><td>14</td><td>Qua 04/06</td><td>Cultura</td><td>Um ano de Allu: o que [Nome] diria para si mesmo no primeiro dia.</td><td>Vídeo 45–60s</td><td>Atração + Engajamento</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="highlight" style="margin-top:16px;">
+        <strong>Mix de formatos:</strong> Texto longo (5×) · Carrossel PDF (3×) · Múltiplas imagens (2×) · Vídeo 45–60s (2×) · Imagem + dado (1×) · Imagem tipográfica (1×) &nbsp;|&nbsp; <strong>Dados hipotéticos nos posts 3, 9, 12</strong> — validar com time interno antes de publicar.
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- FONTES -->
+  <div class="sources">
+    <h4>Fontes e Referências</h4>
+    <ul>
+      <li>Social Insider — <em>LinkedIn Benchmarks 2025</em> — <a href="https://www.socialinsider.io/pt/social-media-benchmarks/linkedin">socialinsider.io</a></li>
+      <li>Social Media Today — <em>Document Posts on LinkedIn See More Engagement</em> — <a href="https://www.socialmediatoday.com/news/report-shows-document-posts-on-linkedin-see-more-engagement/816551/">socialmediatoday.com</a></li>
+      <li>Universum Global — <em>Employer Branding on LinkedIn: Essential Guide 2025</em> — <a href="https://universumglobal.com/resources/blog/employer-branding-on-linkedin/">universumglobal.com</a></li>
+      <li>GaggleAMP — <em>Employer Branding on LinkedIn</em> — <a href="https://blog.gaggleamp.com/employer-branding-on-linkedin">blog.gaggleamp.com</a></li>
+      <li>Blu Ivy Group — <em>2025 Employer Brand and Culture Trends Report</em> — <a href="https://bluivygroup.com/blog/2025-employer-brand-and-culture-trends-report/">bluivygroup.com</a></li>
+      <li>Vouch — <em>25 Employer Brand Statistics</em> — <a href="https://www.vouchfor.com/blog/employer-brand-statistics">vouchfor.com</a></li>
+      <li>PostNitro — <em>LinkedIn Carousel Engagement Stats 2025</em> — <a href="https://postnitro.ai/blog/post/linkedin-carousel-engagement-stats-2025">postnitro.ai</a></li>
+      <li>G4 Educação — Análise de posicionamento público — <a href="https://g4educacao.com">g4educacao.com</a></li>
+    </ul>
+  </div>
+
+  <p style="text-align:center; color:#aaa; font-size:11px; margin-top:40px; padding-top:20px; border-top:1px solid #eee;">
+    Documento elaborado para uso interno da Allu — Abril 2026
+  </p>
+
+</div>
+</body>
+</html>

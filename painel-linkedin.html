@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel de Publicações LinkedIn — allu</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            verde: '#1E8549',
+            'verde-escuro': '#0F3D2E',
+            'verde-claro': '#DFF5E8',
+            cinza: '#F5F5F5',
+            preto: '#111111',
+          },
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #F5F5F5; color: #111111; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    textarea:focus, input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px #1E8549; border-color: #1E8549; }
+    .modal-backdrop { backdrop-filter: blur(6px); }
+    .card-hover { transition: box-shadow 0.2s ease, transform 0.2s ease; }
+    .card-hover:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.09); transform: translateY(-2px); }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-modal { animation: slideModal 0.22s cubic-bezier(.4,0,.2,1); }
+    @keyframes slideModal { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .btn { transition: all 0.15s ease; }
+    .btn:hover { opacity: 0.88; }
+    .btn:active { transform: scale(0.97); }
+    .tag-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; transition: all 0.15s; cursor: pointer; }
+    .tag-pill:hover { background: #DFF5E8; color: #1E8549; border-color: #1E8549; }
+    .tag-pill.active { background: #DFF5E8; color: #1E8549; border-color: #1E8549; font-weight: 600; }
+    .view-btn { padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+    .view-btn.active { background: #1E8549; color: #fff; }
+    .view-btn:not(.active) { background: transparent; color: #6b7280; }
+    .view-btn:not(.active):hover { background: #f3f4f6; }
+    .cal-day { min-height: 72px; border-radius: 10px; padding: 6px; border: 1px solid #f0f0f0; background: #fff; transition: background 0.15s; }
+    .cal-day:hover { background: #fafafa; }
+    .cal-day.today { border-color: #1E8549; }
+    .history-item { display: flex; gap: 10px; align-items: flex-start; }
+    .history-line { width: 1px; background: #e5e7eb; flex-shrink: 0; margin-left: 5px; }
+    input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.5; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const STATUS_CONFIG = {
+  'Rascunho':            { bg: '#f3f4f6', text: '#6b7280', bar: '#d1d5db', icon: 'file', label: 'Rascunho' },
+  'Em análise':          { bg: '#eff6ff', text: '#3b82f6', bar: '#3b82f6', icon: 'eye',  label: 'Em análise' },
+  'Ajustes solicitados': { bg: '#fff7ed', text: '#f97316', bar: '#f97316', icon: 'alert', label: 'Ajustes solicitados' },
+  'Aprovado':            { bg: '#f0fdf4', text: '#1E8549', bar: '#1E8549', icon: 'check-circle', label: 'Aprovado' },
+  'Pronto para postar':  { bg: '#0F3D2E', text: '#fff',    bar: '#0F3D2E', icon: 'zap',  label: 'Pronto para postar' },
+  'Publicado':           { bg: '#1f2937', text: '#f9fafb', bar: '#374151', icon: 'globe', label: 'Publicado' },
+};
+
+const PRIORITY_CONFIG = {
+  'Alta':  { bg: '#fef2f2', text: '#ef4444', dot: '#ef4444' },
+  'Média': { bg: '#fefce8', text: '#ca8a04', dot: '#eab308' },
+  'Baixa': { bg: '#f0fdf4', text: '#16a34a', dot: '#22c55e' },
+};
+
+const ENGAGEMENT_CONFIG = {
+  'Alto':  { emoji: '🔥', label: 'Alto potencial',  bg: '#fff7ed', text: '#f97316' },
+  'Médio': { emoji: '⚡', label: 'Médio potencial', bg: '#fefce8', text: '#ca8a04' },
+  'Baixo': { emoji: '🧊', label: 'Baixo potencial', bg: '#f0f9ff', text: '#0ea5e9' },
+};
+
+const FORMAT_CONFIG = {
+  'Carrossel':    { bg: '#f5f3ff', text: '#7c3aed' },
+  'Post Estático':{ bg: '#f0f9ff', text: '#0284c7' },
+  'Vídeo':        { bg: '#fff7ed', text: '#ea580c' },
+  'Artigo':       { bg: '#f0fdfa', text: '#0d9488' },
+};
+
+const OBJETIVOS = ['Employer Branding','Vaga','Cultura','Expansão','Engajamento','Newsletter','Artigo','Resultados','Institucional'];
+const FORMATOS  = ['Carrossel','Post Estático','Vídeo','Artigo'];
+const STATUS_KEYS = Object.keys(STATUS_CONFIG);
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmtDate = d => { if (!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; };
+const nowStr = () => { const d=new Date(); return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; };
+
+// ─── Icons ────────────────────────────────────────────────────────────────────
+const ICONS = {
+  clock:         <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+  eye:           <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>,
+  'check-circle':<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>,
+  'x-circle':    <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>,
+  x:             <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+  plus:          <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+  edit:          <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+  trash:         <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></>,
+  linkedin:      <><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></>,
+  msg:           <><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>,
+  send:          <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+  'chevron-down':<polyline points="6 9 12 15 18 9"/>,
+  'chevron-up':  <polyline points="18 15 12 9 6 15"/>,
+  'chevron-left':<polyline points="15 18 9 12 15 6"/>,
+  'chevron-right':<polyline points="9 18 15 12 9 6"/>,
+  globe:         <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
+  heart:         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>,
+  repeat:        <><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></>,
+  link:          <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></>,
+  filter:        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>,
+  calendar:      <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>,
+  image:         <><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></>,
+  list:          <><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></>,
+  alert:         <><triangle/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>,
+  zap:           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+  file:          <><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></>,
+  tag:           <><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>,
+  history:       <><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></>,
+  star:          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+  monitor:       <><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></>,
+  smartphone:    <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>,
+  'message-square': <><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>,
+  target:        <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
+  check:         <polyline points="20 6 9 12 4 10"/>,
+  crown:         <><path d="M12 1l3.22 6.53L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.78-.74L12 1z"/></>,
+};
+
+const Ic = ({ n, size=16, color='currentColor', sw=2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+    {ICONS[n]}
+  </svg>
+);
+
+// ─── Sample Data ──────────────────────────────────────────────────────────────
+const INITIAL_POSTS = [
+  {
+    id: 1,
+    titulo: 'Como é trabalhar na allu? Conheça nossa cultura',
+    legenda: `Na allu, acreditamos que um ambiente saudável é a base para resultados extraordinários. 🌿\n\nNossos colaboradores têm acesso a:\n✅ Horário flexível e trabalho híbrido\n✅ Programa de saúde mental\n✅ Trilha de desenvolvimento acelerado\n✅ Cultura de feedback contínuo\n\nQuer fazer parte do nosso time?\n\n#allu #CulturaOrganizacional #EmployerBranding #TrabalheNaAllu`,
+    formato: 'Carrossel',
+    dataPublicacao: '2026-05-22',
+    status: 'Em análise',
+    prioridade: 'Alta',
+    objetivo: 'Employer Branding',
+    engajamento: 'Alto',
+    tags: ['#cultura', '#carrossel', '#employer-branding'],
+    linkCTA: 'https://allu.com.br/vagas',
+    imagemURL: '',
+    observacoes: 'Usar paleta verde e fotos do escritório. Revisar hashtags com o time de marketing.',
+    comments: [
+      { id: 1, autor: 'Ana Lima', texto: 'Adorei o texto! Só ajusta o CTA para ficar mais chamativo.', timestamp: '16/05/2026 às 14:32' },
+      { id: 2, autor: 'Lívia Freire', texto: 'Atualizado! Verifiquem novamente, por favor.', timestamp: '17/05/2026 às 09:15' },
+    ],
+    feedbackLideranca: [
+      { id: 1, autor: 'Diretoria People', texto: 'Conteúdo alinhado com a narrativa da empresa. Ajustar apenas o tom da terceira linha para ficar mais direto.', timestamp: '17/05/2026 às 11:00' },
+    ],
+    historico: [
+      { acao: 'Post criado', timestamp: '15/05/2026 às 10:00' },
+      { acao: 'Status alterado para Em análise', timestamp: '16/05/2026 às 09:30' },
+    ],
+  },
+  {
+    id: 2,
+    titulo: 'Depoimento: crescimento de carreira na allu',
+    legenda: `"Entrei como analista júnior e em 18 meses já estava liderando meu próprio time." — Lucas Ferreira, Tech Lead 💬\n\nAs histórias de crescimento aqui na allu acontecem todos os dias. Investimos em pessoas porque acreditamos que o desenvolvimento humano é nosso maior ativo.\n\n#allu #GrowthMindset #CarreiraEmTI #EmployerBranding`,
+    formato: 'Post Estático',
+    dataPublicacao: '2026-05-25',
+    status: 'Ajustes solicitados',
+    prioridade: 'Média',
+    objetivo: 'Cultura',
+    engajamento: 'Alto',
+    tags: ['#depoimento', '#cultura', '#carreira'],
+    linkCTA: 'https://allu.com.br/carreiras',
+    imagemURL: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80',
+    observacoes: 'Post de depoimento real. Aprovação do Lucas pendente antes de publicar.',
+    comments: [
+      { id: 1, autor: 'RH allu', texto: 'Precisa de aprovação formal antes de publicar depoimento real.', timestamp: '17/05/2026 às 10:00' },
+    ],
+    feedbackLideranca: [
+      { id: 1, autor: 'Head de People', texto: 'Verificar LGPD para uso de nome e cargo do colaborador. Solicitar autorização por escrito.', timestamp: '17/05/2026 às 15:22' },
+    ],
+    historico: [
+      { acao: 'Post criado', timestamp: '14/05/2026 às 16:00' },
+      { acao: 'Enviado para análise', timestamp: '15/05/2026 às 08:00' },
+      { acao: 'Ajustes solicitados pela liderança', timestamp: '17/05/2026 às 15:22' },
+    ],
+  },
+  {
+    id: 3,
+    titulo: 'Programa Trainee allu 2026 — Inscrições abertas!',
+    legenda: `🚀 O Programa Trainee allu 2026 está com inscrições ABERTAS!\n\nO que oferecemos:\n📌 18 meses de imersão nas áreas de negócio\n📌 Mentoria com líderes sêniores\n📌 Projeto de impacto real desde o primeiro mês\n📌 Salário competitivo + benefícios completos\n\nRecém-formados entre 2024 e 2026. Inscreva-se até 31/05!\n\n#Trainee2026 #allu #OportunidadeDeCarreira #JovemTalento`,
+    formato: 'Vídeo',
+    dataPublicacao: '2026-05-28',
+    status: 'Aprovado',
+    prioridade: 'Alta',
+    objetivo: 'Vaga',
+    engajamento: 'Alto',
+    tags: ['#trainee', '#vaga', '#expansão'],
+    linkCTA: 'https://allu.com.br/trainee2026',
+    imagemURL: '',
+    observacoes: 'Vídeo de 60s com motion design. Aprovado pelo board em 15/05.',
+    comments: [],
+    feedbackLideranca: [
+      { id: 1, autor: 'CEO allu', texto: 'Aprovado. Publicar na quarta às 8h para máximo alcance.', timestamp: '15/05/2026 às 09:11' },
+    ],
+    historico: [
+      { acao: 'Post criado', timestamp: '10/05/2026 às 09:00' },
+      { acao: 'Em análise', timestamp: '12/05/2026 às 14:00' },
+      { acao: 'Aprovado pela liderança', timestamp: '15/05/2026 às 09:11' },
+    ],
+  },
+  {
+    id: 4,
+    titulo: 'Artigo: O futuro do RH orientado a dados',
+    legenda: `O RH está se transformando — e dados são o coração dessa mudança. 📊\n\nNo nosso artigo, exploramos como a allu utiliza People Analytics:\n→ Predição de turnover com alta acurácia\n→ Matching cultural no processo seletivo\n→ Dashboard de bem-estar em tempo real\n\nLeia o artigo completo!\n\n#PeopleAnalytics #FuturoDoRH #HRTech #allu`,
+    formato: 'Artigo',
+    dataPublicacao: '2026-06-02',
+    status: 'Rascunho',
+    prioridade: 'Baixa',
+    objetivo: 'Resultados',
+    engajamento: 'Médio',
+    tags: ['#artigo', '#dados', '#RH'],
+    linkCTA: 'https://allu.com.br/blog/hr-analytics',
+    imagemURL: '',
+    observacoes: 'Validar dados internos com o time de analytics antes de enviar para aprovação.',
+    comments: [
+      { id: 1, autor: 'Time Analytics', texto: 'Os números precisam ser revisados. Alguns percentuais estão desatualizados.', timestamp: '18/05/2026 às 08:45' },
+    ],
+    feedbackLideranca: [],
+    historico: [
+      { acao: 'Post criado como rascunho', timestamp: '18/05/2026 às 08:00' },
+    ],
+  },
+  {
+    id: 5,
+    titulo: 'Behind the scenes: nosso escritório em São Paulo',
+    legenda: `Já imaginou trabalhar num lugar assim? 🌿✨\n\nDe segunda a sexta, nosso escritório em SP é palco de criatividade, colaboração e muito café ☕\n\nConheça os bastidores da allu!\n\n#allu #BehindTheScenes #EscritorioSP #CulturaAllu #EmployerBranding`,
+    formato: 'Post Estático',
+    dataPublicacao: '2026-06-05',
+    status: 'Pronto para postar',
+    prioridade: 'Média',
+    objetivo: 'Employer Branding',
+    engajamento: 'Médio',
+    tags: ['#behind-the-scenes', '#cultura', '#sp'],
+    linkCTA: '',
+    imagemURL: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+    observacoes: 'Checar autorização de imagem de todos os colaboradores visíveis.',
+    comments: [],
+    feedbackLideranca: [
+      { id: 1, autor: 'Head de People', texto: 'Ótimo conteúdo. Aguardando confirmação de autorização de imagem para liberar.', timestamp: '18/05/2026 às 16:00' },
+    ],
+    historico: [
+      { acao: 'Post criado', timestamp: '16/05/2026 às 11:00' },
+      { acao: 'Aprovado', timestamp: '17/05/2026 às 14:00' },
+      { acao: 'Marcado como Pronto para postar', timestamp: '18/05/2026 às 16:30' },
+    ],
+  },
+];
+
+// ─── AlluLogo ─────────────────────────────────────────────────────────────────
+const AlluLogo = ({ size=38 }) => (
+  <div style={{width:size,height:size,borderRadius:size/2.5,background:'linear-gradient(135deg,#1E8549,#0F3D2E)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 2px 8px rgba(30,133,73,0.3)'}}>
+    <span style={{color:'#fff',fontWeight:800,fontSize:size*0.42,letterSpacing:'-0.5px'}}>a</span>
+  </div>
+);
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }) => {
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG['Rascunho'];
+  return (
+    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:999,fontSize:11,fontWeight:600}}>
+      <Ic n={cfg.icon} size={11} color={cfg.text} />
+      {cfg.label}
+    </span>
+  );
+};
+
+const PriorityBadge = ({ priority }) => {
+  const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG['Média'];
+  return (
+    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:4,padding:'2px 8px',borderRadius:999,fontSize:11,fontWeight:600}}>
+      <span style={{width:6,height:6,borderRadius:999,background:cfg.dot,display:'inline-block'}}/>
+      {priority}
+    </span>
+  );
+};
+
+const FormatBadge = ({ formato }) => {
+  const cfg = FORMAT_CONFIG[formato] || {bg:'#f3f4f6',text:'#6b7280'};
+  return (
+    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius:999,fontSize:11,fontWeight:600}}>
+      {formato}
+    </span>
+  );
+};
+
+const EngagementBadge = ({ engajamento }) => {
+  const cfg = ENGAGEMENT_CONFIG[engajamento] || ENGAGEMENT_CONFIG['Médio'];
+  return (
+    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:999,fontSize:11,fontWeight:600}}>
+      {cfg.emoji} {cfg.label}
+    </span>
+  );
+};
+
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
+const KPICard = ({ label, value, iconName, accent, iconColor }) => (
+  <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 card-hover" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: accent + '18'}}>
+      <Ic n={iconName} size={20} color={iconColor || accent} />
+    </div>
+    <div>
+      <div className="text-2xl font-bold leading-tight" style={{color:'#111111',fontWeight:800}}>{value}</div>
+      <div className="text-xs text-gray-500 font-medium mt-0.5 leading-tight">{label}</div>
+    </div>
+  </div>
+);
+
+// ─── LinkedIn Simulation Modal ────────────────────────────────────────────────
+const LinkedInModal = ({ post, onClose }) => {
+  const [device, setDevice] = useState('desktop');
+  const isMobile = device === 'mobile';
+  const hashtags = (post.legenda.match(/#\w+/g) || []);
+  const cleanText = post.legenda.replace(/#\w+/g, '').trim();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(15,61,46,0.6)'}} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl slide-modal overflow-hidden flex flex-col" style={{width: isMobile ? 380 : 580, maxHeight:'92vh'}} onClick={e=>e.stopPropagation()}>
+
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Ic n="linkedin" size={16} color="#0A66C2" />
+              <span className="text-sm font-semibold text-gray-700">Prévia do Post</span>
+            </div>
+          </div>
+          {/* Device toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <button onClick={()=>setDevice('desktop')} className={`view-btn flex items-center gap-1.5 ${device==='desktop'?'active':''}`}>
+              <Ic n="monitor" size={13} color={device==='desktop'?'#fff':'#6b7280'} /> Desktop
+            </button>
+            <button onClick={()=>setDevice('mobile')} className={`view-btn flex items-center gap-1.5 ${device==='mobile'?'active':''}`}>
+              <Ic n="smartphone" size={13} color={device==='mobile'?'#fff':'#6b7280'} /> Mobile
+            </button>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors ml-2">
+            <Ic n="x" size={15} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto scrollbar-hide p-5 flex-1">
+          {/* LinkedIn Card */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.08)', maxWidth: isMobile ? 340 : '100%', margin: '0 auto'}}>
+            <div className="p-4 flex items-start gap-3">
+              <AlluLogo size={isMobile ? 38 : 44} />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm" style={{color:'#111',fontWeight:700}}>allu</div>
+                <div className="text-xs text-gray-500">{isMobile ? 'Employer Branding' : 'Empresa · Employer Branding · 1.2 mil seguidores'}</div>
+                <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                  <span>Agora ·</span>
+                  <Ic n="globe" size={10} color="#9ca3af" />
+                </div>
+              </div>
+              <button className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors" style={{borderColor:'#1E8549',color:'#1E8549',fontSize:isMobile?11:12}}>+ Seguir</button>
+            </div>
+
+            <div className="px-4 pb-3">
+              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" style={{fontSize: isMobile ? 13 : 14}}>{cleanText}</p>
+              {hashtags.length > 0 && (
+                <p className="mt-2 text-sm font-semibold" style={{color:'#1E8549', fontSize: isMobile ? 12 : 13}}>
+                  {hashtags.join(' ')}
+                </p>
+              )}
+            </div>
+
+            {post.imagemURL ? (
+              <div className="w-full overflow-hidden" style={{maxHeight: isMobile ? 200 : 320, background:'#f3f4f6'}}>
+                <img src={post.imagemURL} alt="" className="w-full object-cover" style={{maxHeight: isMobile ? 200 : 320}} onError={e=>{e.target.style.display='none'}} />
+              </div>
+            ) : (
+              <div className="mx-4 mb-3 rounded-xl flex items-center justify-center" style={{height: isMobile ? 140 : 200, background:'#DFF5E8'}}>
+                <div className="text-center">
+                  <Ic n="image" size={28} color="#1E8549" />
+                  <div className="text-xs mt-1 font-medium" style={{color:'#1E8549'}}>Arte do post</div>
+                </div>
+              </div>
+            )}
+
+            {post.linkCTA && (
+              <div className="mx-4 mb-3 border border-gray-200 rounded-lg p-3 flex items-center justify-between bg-gray-50">
+                <div className="text-xs text-gray-500 truncate">{post.linkCTA}</div>
+                <Ic n="link" size={13} color="#9ca3af" />
+              </div>
+            )}
+
+            <div className="px-4 pb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <span className="text-sm">👍 ❤️ 🎉</span>
+                <span className="text-xs text-gray-400 ml-1">142</span>
+              </div>
+              <span className="text-xs text-gray-400">18 comentários</span>
+            </div>
+
+            <div className="border-t border-gray-100 flex">
+              {['Curtir','Comentar','Compartilhar'].map((a,i)=>(
+                <button key={i} className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors font-medium">
+                  {i===0 && <Ic n="heart" size={13} />}
+                  {i===1 && <Ic n="msg" size={13} />}
+                  {i===2 && <Ic n="repeat" size={13} />}
+                  {isMobile ? '' : a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Post meta */}
+          <div className="mt-4 rounded-xl p-4 space-y-2" style={{background:'#F5F5F5'}}>
+            <div className="flex flex-wrap gap-2 items-center">
+              <FormatBadge formato={post.formato} />
+              <PriorityBadge priority={post.prioridade} />
+              <EngagementBadge engajamento={post.engajamento} />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="text-xs text-gray-500"><span className="font-semibold text-gray-700">Objetivo:</span> {post.objetivo}</div>
+              <div className="text-xs text-gray-500"><span className="font-semibold text-gray-700">Publicação:</span> {fmtDate(post.dataPublicacao)}</div>
+            </div>
+            {post.observacoes && <div className="text-xs text-gray-500"><span className="font-semibold text-gray-700">Obs:</span> {post.observacoes}</div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Post Modal (Add/Edit) ────────────────────────────────────────────────────
+const EMPTY = {
+  titulo:'', legenda:'', formato:'Post Estático', dataPublicacao:'',
+  linkCTA:'', imagemURL:'', observacoes:'', status:'Rascunho',
+  prioridade:'Média', objetivo:'Employer Branding', engajamento:'Médio', tags:[],
+};
+
+const PostModal = ({ post, onClose, onSave }) => {
+  const [form, setForm] = useState(post ? {...post} : {...EMPTY});
+  const [tagInput, setTagInput] = useState('');
+
+  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+
+  const addTag = () => {
+    const t = tagInput.trim().replace(/^#*/, '#');
+    if (t.length > 1 && !form.tags.includes(t)) set('tags', [...form.tags, t]);
+    setTagInput('');
+  };
+
+  const removeTag = (t) => set('tags', form.tags.filter(x => x !== t));
+
+  const save = () => {
+    if (!form.titulo.trim()) { alert('Preencha o título interno.'); return; }
+    const ts = nowStr();
+    if (post) {
+      onSave({...form, historico: [...(form.historico||[]), { acao: 'Post editado', timestamp: ts }]});
+    } else {
+      onSave({...form, id: Date.now(), comments:[], feedbackLideranca:[], historico:[{ acao:'Post criado', timestamp: ts }]});
+    }
+    onClose();
+  };
+
+  const F = ({label, children}) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
+      {children}
+    </div>
+  );
+
+  const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-preto w-full transition-all";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(15,61,46,0.6)'}} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col slide-modal" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="font-bold text-base" style={{fontWeight:700}}>{post ? 'Editar Post' : 'Novo Post'}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Preencha os dados do conteúdo LinkedIn</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+            <Ic n="x" size={15} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto scrollbar-hide p-6 grid grid-cols-1 gap-4 flex-1">
+          <F label="Título interno *">
+            <input className={ic} value={form.titulo} onChange={e=>set('titulo',e.target.value)} placeholder="Ex: Post de cultura — maio 2026" />
+          </F>
+
+          <F label="Texto da legenda">
+            <textarea className={ic} rows={5} value={form.legenda} onChange={e=>set('legenda',e.target.value)} placeholder="Escreva o texto completo que será publicado..." />
+          </F>
+
+          <div className="grid grid-cols-2 gap-4">
+            <F label="Formato">
+              <select className={ic} value={form.formato} onChange={e=>set('formato',e.target.value)}>
+                {FORMATOS.map(f=><option key={f}>{f}</option>)}
+              </select>
+            </F>
+            <F label="Status">
+              <select className={ic} value={form.status} onChange={e=>set('status',e.target.value)}>
+                {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
+              </select>
+            </F>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <F label="Prioridade">
+              <select className={ic} value={form.prioridade} onChange={e=>set('prioridade',e.target.value)}>
+                {['Alta','Média','Baixa'].map(p=><option key={p}>{p}</option>)}
+              </select>
+            </F>
+            <F label="Objetivo do post">
+              <select className={ic} value={form.objetivo} onChange={e=>set('objetivo',e.target.value)}>
+                {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </F>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <F label="Data prevista de publicação">
+              <input type="date" className={ic} value={form.dataPublicacao} onChange={e=>set('dataPublicacao',e.target.value)} />
+            </F>
+            <F label="Potencial de engajamento">
+              <select className={ic} value={form.engajamento} onChange={e=>set('engajamento',e.target.value)}>
+                {['Alto','Médio','Baixo'].map(e=><option key={e}>{e}</option>)}
+              </select>
+            </F>
+          </div>
+
+          <F label="Tags">
+            <div className="flex gap-2">
+              <input className={ic} value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addTag())} placeholder="Ex: #cultura (Enter para adicionar)" />
+              <button onClick={addTag} className="px-4 py-2 rounded-xl text-sm font-semibold text-white btn" style={{background:'#1E8549',flexShrink:0}}>+</button>
+            </div>
+            {form.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {form.tags.map(t=>(
+                  <span key={t} className="tag-pill active">
+                    {t}
+                    <button onClick={()=>removeTag(t)} className="ml-1.5 opacity-60 hover:opacity-100"><Ic n="x" size={9} color="#1E8549" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </F>
+
+          <F label="Link / CTA">
+            <input className={ic} value={form.linkCTA} onChange={e=>set('linkCTA',e.target.value)} placeholder="https://allu.com.br/..." />
+          </F>
+
+          <F label="URL da imagem">
+            <input className={ic} value={form.imagemURL} onChange={e=>set('imagemURL',e.target.value)} placeholder="https://images.unsplash.com/..." />
+          </F>
+
+          <F label="Observações internas">
+            <textarea className={ic} rows={3} value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Notas para o time, pendências, instruções..." />
+          </F>
+
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
+            <button onClick={save} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white btn" style={{background:'#1E8549'}}>
+              {post ? 'Salvar alterações' : 'Criar post'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
+const ConfirmModal = ({ message, onConfirm, onClose, danger=false }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(0,0,0,0.5)'}} onClick={onClose}>
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-modal" onClick={e=>e.stopPropagation()}>
+      <p className="text-sm text-gray-700 leading-relaxed">{message}</p>
+      <div className="flex gap-3 mt-5">
+        <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
+        <button onClick={()=>{onConfirm();onClose();}} className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white btn" style={{background: danger ? '#ef4444' : '#1E8549'}}>
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── Comments Section ─────────────────────────────────────────────────────────
+const CommentsSection = ({ post, onAddComment, onAddLeadFeedback }) => {
+  const [text, setText] = useState('');
+  const [autor, setAutor] = useState('');
+  const [leadText, setLeadText] = useState('');
+  const [leadAutor, setLeadAutor] = useState('');
+  const [tab, setTab] = useState('comments');
+
+  const sendComment = () => {
+    if (!text.trim()) return;
+    onAddComment(post.id, { id: Date.now(), autor: autor.trim()||'Anônimo', texto: text.trim(), timestamp: nowStr() });
+    setText('');
+  };
+
+  const sendLead = () => {
+    if (!leadText.trim()) return;
+    onAddLeadFeedback(post.id, { id: Date.now(), autor: leadAutor.trim()||'Liderança', texto: leadText.trim(), timestamp: nowStr() });
+    setLeadText('');
+  };
+
+  return (
+    <div className="border-t border-gray-100 pt-3 mt-3 fade-in">
+      {/* Tab switcher */}
+      <div className="flex gap-1 mb-3 bg-gray-100 rounded-xl p-1 w-fit">
+        <button onClick={()=>setTab('comments')} className={`view-btn flex items-center gap-1.5 ${tab==='comments'?'active':''}`}>
+          <Ic n="msg" size={12} color={tab==='comments'?'#fff':'#6b7280'} />
+          Comentários {post.comments.length > 0 && `(${post.comments.length})`}
+        </button>
+        <button onClick={()=>setTab('lead')} className={`view-btn flex items-center gap-1.5 ${tab==='lead'?'active':''}`}>
+          <Ic n="crown" size={12} color={tab==='lead'?'#fff':'#6b7280'} />
+          Liderança {post.feedbackLideranca.length > 0 && `(${post.feedbackLideranca.length})`}
+        </button>
+      </div>
+
+      {tab === 'comments' && (
+        <>
+          {post.comments.length === 0 && <p className="text-xs text-gray-400 italic mb-3">Nenhum comentário ainda.</p>}
+          <div className="space-y-2 mb-3">
+            {post.comments.map(c=>(
+              <div key={c.id} className="rounded-xl p-3" style={{background:'#F5F5F5'}}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold" style={{color:'#0F3D2E'}}>{c.autor}</span>
+                  <span className="text-xs text-gray-400">{c.timestamp}</span>
+                </div>
+                <p className="text-xs text-gray-700 leading-relaxed">{c.texto}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input className="border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" style={{maxWidth:110,minWidth:90}} placeholder="Seu nome" value={autor} onChange={e=>setAutor(e.target.value)} />
+            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Adicionar comentário..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendComment()} />
+            <button onClick={sendComment} className="px-3 py-2 rounded-lg text-white flex-shrink-0 btn" style={{background:'#1E8549'}}>
+              <Ic n="send" size={12} color="#fff" />
+            </button>
+          </div>
+        </>
+      )}
+
+      {tab === 'lead' && (
+        <>
+          {post.feedbackLideranca.length === 0 && <p className="text-xs text-gray-400 italic mb-3">Nenhum feedback da liderança ainda.</p>}
+          <div className="space-y-2 mb-3">
+            {post.feedbackLideranca.map(c=>(
+              <div key={c.id} className="rounded-xl p-3 border" style={{background:'#FFFBEB',borderColor:'#fde68a'}}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Ic n="crown" size={11} color="#ca8a04" />
+                  <span className="text-xs font-semibold" style={{color:'#92400e'}}>{c.autor}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{c.timestamp}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{color:'#78350f'}}>{c.texto}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input className="border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" style={{maxWidth:130,minWidth:100}} placeholder="Ex: Head de People" value={leadAutor} onChange={e=>setLeadAutor(e.target.value)} />
+            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Feedback da liderança..." value={leadText} onChange={e=>setLeadText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendLead()} />
+            <button onClick={sendLead} className="px-3 py-2 rounded-lg flex-shrink-0 btn text-white" style={{background:'#ca8a04'}}>
+              <Ic n="send" size={12} color="#fff" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// ─── History Section ──────────────────────────────────────────────────────────
+const HistorySection = ({ historico }) => (
+  <div className="border-t border-gray-100 pt-3 mt-3 fade-in">
+    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+      <Ic n="history" size={12} /> Histórico
+    </p>
+    <div className="space-y-2">
+      {(historico||[]).map((h, i) => (
+        <div key={i} className="flex items-start gap-2.5">
+          <div className="flex flex-col items-center gap-0.5 flex-shrink-0 mt-0.5">
+            <div className="w-2 h-2 rounded-full" style={{background:'#1E8549'}} />
+            {i < (historico.length-1) && <div className="w-px flex-1 bg-gray-200" style={{height:14}} />}
+          </div>
+          <div className="pb-1">
+            <p className="text-xs text-gray-700 font-medium">{h.acao}</p>
+            <p className="text-xs text-gray-400">{h.timestamp}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ─── Post Card ────────────────────────────────────────────────────────────────
+const PostCard = ({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment, onAddLeadFeedback, activeTag, onTagClick }) => {
+  const [openSection, setOpenSection] = useState(null);
+  const toggle = (s) => setOpenSection(v => v === s ? null : s);
+  const sc = STATUS_CONFIG[post.status] || STATUS_CONFIG['Rascunho'];
+  const totalFeedback = post.comments.length + post.feedbackLideranca.length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden card-hover" style={{boxShadow:'0 1px 6px rgba(0,0,0,0.06)'}}>
+      {/* Top accent */}
+      <div style={{height:3,background: `linear-gradient(90deg, ${sc.bar}, ${sc.bar}88)`}} />
+
+      <div className="p-5">
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-bold leading-snug mb-2 line-clamp-2" style={{color:'#111111',fontWeight:700}}>{post.titulo}</h3>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FormatBadge formato={post.formato} />
+              <StatusBadge status={post.status} />
+            </div>
+          </div>
+          {post.imagemURL && (
+            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{background:'#f3f4f6'}}>
+              <img src={post.imagemURL} alt="" className="w-full h-full object-cover" onError={e=>{e.target.parentElement.style.display='none'}} />
+            </div>
+          )}
+        </div>
+
+        {/* Priority + Engagement row */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          <PriorityBadge priority={post.prioridade} />
+          <EngagementBadge engajamento={post.engajamento} />
+          {post.objetivo && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{background:'#F5F5F5',color:'#6b7280',border:'1px solid #e5e7eb'}}>
+              <Ic n="target" size={10} color="#9ca3af" /> {post.objetivo}
+            </span>
+          )}
+        </div>
+
+        {/* Caption preview */}
+        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{post.legenda}</p>
+
+        {/* Tags */}
+        {post.tags && post.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {post.tags.map(t => (
+              <span key={t} onClick={()=>onTagClick(t)} className={`tag-pill ${activeTag===t?'active':''}`}>{t}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Meta */}
+        <div className="flex items-center gap-3 text-xs text-gray-400 mb-4">
+          <div className="flex items-center gap-1.5">
+            <Ic n="calendar" size={11} />
+            <span>{fmtDate(post.dataPublicacao)}</span>
+          </div>
+          {post.feedbackLideranca.length > 0 && (
+            <div className="flex items-center gap-1.5" style={{color:'#ca8a04'}}>
+              <Ic n="crown" size={11} color="#ca8a04" />
+              <span>{post.feedbackLideranca.length} feedback{post.feedbackLideranca.length>1?'s':''}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Status quick-change */}
+        <div className="mb-3">
+          <select
+            value={post.status}
+            onChange={e=>onChangeStatus(post.id, e.target.value)}
+            className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600 cursor-pointer w-full"
+            style={{fontWeight:500}}
+          >
+            {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={()=>onView(post)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+            <Ic n="eye" size={12} /> Simulação
+          </button>
+          <button onClick={()=>onEdit(post)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+            <Ic n="edit" size={12} /> Editar
+          </button>
+          <button onClick={()=>onDelete(post.id)} className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors">
+            <Ic n="trash" size={12} />
+          </button>
+        </div>
+
+        {/* Expandable sections */}
+        <div className="mt-3 flex gap-2 border-t border-gray-100 pt-3">
+          <button onClick={()=>toggle('comments')} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-verde transition-colors">
+            <Ic n={openSection==='comments'?'chevron-up':'chevron-down'} size={12} />
+            Comentários{totalFeedback > 0 ? ` (${totalFeedback})` : ''}
+          </button>
+          <button onClick={()=>toggle('history')} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-verde transition-colors ml-3">
+            <Ic n="history" size={12} />
+            Histórico
+          </button>
+        </div>
+
+        {openSection === 'comments' && (
+          <CommentsSection post={post} onAddComment={onAddComment} onAddLeadFeedback={onAddLeadFeedback} />
+        )}
+        {openSection === 'history' && (
+          <HistorySection historico={post.historico} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Calendar View ────────────────────────────────────────────────────────────
+const CalendarView = ({ posts }) => {
+  const today = new Date();
+  const [cur, setCur] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const y = cur.getFullYear(), m = cur.getMonth();
+  const monthLabel = cur.toLocaleString('pt-BR', {month:'long', year:'numeric'});
+  const firstDOW = (new Date(y, m, 1).getDay() + 6) % 7; // Mon-start
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+
+  const byDay = useMemo(() => {
+    const map = {};
+    posts.forEach(p => {
+      if (!p.dataPublicacao) return;
+      const [py, pm, pd] = p.dataPublicacao.split('-').map(Number);
+      if (py === y && pm-1 === m) {
+        if (!map[pd]) map[pd] = [];
+        map[pd].push(p);
+      }
+    });
+    return map;
+  }, [posts, y, m]);
+
+  const cells = [];
+  for (let i = 0; i < firstDOW; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const isToday = (d) => d === today.getDate() && m === today.getMonth() && y === today.getFullYear();
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 fade-in" style={{boxShadow:'0 1px 6px rgba(0,0,0,0.06)'}}>
+      <div className="flex items-center justify-between mb-5">
+        <button onClick={()=>setCur(new Date(y, m-1, 1))} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
+          <Ic n="chevron-left" size={16} />
+        </button>
+        <h3 className="font-bold text-sm capitalize" style={{fontWeight:700}}>{monthLabel}</h3>
+        <button onClick={()=>setCur(new Date(y, m+1, 1))} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors">
+          <Ic n="chevron-right" size={16} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d=>(
+          <div key={d} className="text-center text-xs font-semibold text-gray-400 py-1">{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((day, i) => (
+          <div key={i} className={`cal-day ${day && isToday(day) ? 'today' : ''}`}>
+            {day && (
+              <>
+                <div className="text-xs font-semibold mb-1" style={{color: isToday(day) ? '#1E8549' : '#9ca3af'}}>{day}</div>
+                <div className="space-y-0.5 overflow-hidden">
+                  {(byDay[day]||[]).slice(0, 3).map(p => {
+                    const sc = STATUS_CONFIG[p.status] || STATUS_CONFIG['Rascunho'];
+                    return (
+                      <div key={p.id} title={p.titulo} className="rounded px-1 py-0.5 truncate" style={{background: sc.bar + '20', color: sc.bar, fontSize: 10, fontWeight: 500}}>
+                        {p.titulo.length > 12 ? p.titulo.slice(0,12)+'…' : p.titulo}
+                      </div>
+                    );
+                  })}
+                  {(byDay[day]||[]).length > 3 && (
+                    <div className="text-xs text-gray-400" style={{fontSize:9}}>+{(byDay[day].length-3)} mais</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-gray-100">
+        {Object.entries(STATUS_CONFIG).map(([s, cfg]) => (
+          <div key={s} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background: cfg.bar}} />
+            {cfg.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+const App = () => {
+  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [viewPost, setViewPost] = useState(null);
+  const [editPost, setEditPost] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [confirm, setConfirm] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
+  const [activeTag, setActiveTag] = useState('');
+  const [filters, setFilters] = useState({ status:'', formato:'', objetivo:'', data:'' });
+
+  // KPIs
+  const kpis = useMemo(() => ({
+    total: posts.length,
+    analise: posts.filter(p => p.status === 'Em análise').length,
+    ajustes: posts.filter(p => p.status === 'Ajustes solicitados').length,
+    aprovados: posts.filter(p => ['Aprovado','Pronto para postar'].includes(p.status)).length,
+    publicados: posts.filter(p => p.status === 'Publicado').length,
+  }), [posts]);
+
+  // Filtered posts
+  const filtered = useMemo(() => posts.filter(p => {
+    if (filters.status && p.status !== filters.status) return false;
+    if (filters.formato && p.formato !== filters.formato) return false;
+    if (filters.objetivo && p.objetivo !== filters.objetivo) return false;
+    if (filters.data && p.dataPublicacao !== filters.data) return false;
+    if (activeTag && !(p.tags||[]).includes(activeTag)) return false;
+    return true;
+  }), [posts, filters, activeTag]);
+
+  const allTags = useMemo(() => [...new Set(posts.flatMap(p => p.tags||[]))].sort(), [posts]);
+
+  const setF = (k, v) => setFilters(f => ({...f, [k]: v}));
+  const clearFilters = () => { setFilters({status:'',formato:'',objetivo:'',data:''}); setActiveTag(''); };
+  const hasFilters = Object.values(filters).some(v=>v) || !!activeTag;
+
+  const savePost = (form) => {
+    if (form.id && posts.find(p=>p.id===form.id)) {
+      setPosts(ps => ps.map(p => p.id===form.id ? {...form} : p));
+    } else {
+      setPosts(ps => [...ps, form]);
+    }
+  };
+
+  const changeStatus = (id, newStatus) => {
+    setPosts(ps => ps.map(p => p.id===id ? {
+      ...p, status: newStatus,
+      historico: [...(p.historico||[]), { acao: `Status alterado para ${newStatus}`, timestamp: nowStr() }]
+    } : p));
+  };
+
+  const deletePost = (id) => setPosts(ps => ps.filter(p => p.id!==id));
+
+  const addComment = (pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, comments:[...p.comments,c]} : p));
+  const addLead = (pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, feedbackLideranca:[...(p.feedbackLideranca||[]),c]} : p));
+
+  const handleTagClick = (t) => setActiveTag(v => v===t ? '' : t);
+
+  const sc = "border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 cursor-pointer focus:ring-0";
+
+  return (
+    <div style={{minHeight:'100vh',background:'#F5F5F5'}}>
+
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-100" style={{boxShadow:'0 1px 12px rgba(0,0,0,0.06)'}}>
+        <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <AlluLogo size={36} />
+            <div>
+              <h1 className="font-extrabold text-base leading-tight" style={{color:'#111111',fontWeight:800}}>Painel de Publicações LinkedIn</h1>
+              <p className="text-xs text-gray-400 leading-tight">Acompanhe, revise e aprove os conteúdos antes da publicação.</p>
+            </div>
+          </div>
+          <button
+            onClick={()=>setShowAdd(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white btn"
+            style={{background:'linear-gradient(135deg,#1E8549,#0F3D2E)',fontWeight:700,boxShadow:'0 2px 10px rgba(30,133,73,0.35)'}}
+          >
+            <Ic n="plus" size={15} color="#fff" />
+            Novo Post
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <KPICard label="Total de posts"    value={kpis.total}     iconName="linkedin"     accent="#1E8549" />
+          <KPICard label="Em análise"         value={kpis.analise}   iconName="eye"          accent="#3b82f6" />
+          <KPICard label="Ajustes solicitados"value={kpis.ajustes}   iconName="alert"        accent="#f97316" />
+          <KPICard label="Aprovados"          value={kpis.aprovados} iconName="check-circle" accent="#1E8549" />
+          <KPICard label="Publicados"         value={kpis.publicados}iconName="globe"        accent="#374151" />
+        </div>
+
+        {/* Filters + View toggle */}
+        <div className="bg-white rounded-2xl border border-gray-100 px-5 py-4" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <Ic n="filter" size={13} /> Filtros
+            </div>
+
+            <select className={sc} value={filters.status} onChange={e=>setF('status',e.target.value)}>
+              <option value="">Todos os status</option>
+              {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
+            </select>
+
+            <select className={sc} value={filters.formato} onChange={e=>setF('formato',e.target.value)}>
+              <option value="">Todos os formatos</option>
+              {FORMATOS.map(f=><option key={f}>{f}</option>)}
+            </select>
+
+            <select className={sc} value={filters.objetivo} onChange={e=>setF('objetivo',e.target.value)}>
+              <option value="">Todos os objetivos</option>
+              {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
+            </select>
+
+            <input type="date" className={sc} value={filters.data} onChange={e=>setF('data',e.target.value)} title="Filtrar por data" />
+
+            {hasFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors border border-red-100">
+                <Ic n="x" size={12} /> Limpar
+              </button>
+            )}
+
+            <span className="text-xs text-gray-400 ml-auto">{filtered.length} post{filtered.length!==1?'s':''}</span>
+
+            {/* View mode */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+              <button onClick={()=>setViewMode('list')} className={`view-btn flex items-center gap-1.5 ${viewMode==='list'?'active':''}`}>
+                <Ic n="list" size={12} color={viewMode==='list'?'#fff':'#6b7280'} /> Lista
+              </button>
+              <button onClick={()=>setViewMode('calendar')} className={`view-btn flex items-center gap-1.5 ${viewMode==='calendar'?'active':''}`}>
+                <Ic n="calendar" size={12} color={viewMode==='calendar'?'#fff':'#6b7280'} /> Calendário
+              </button>
+            </div>
+          </div>
+
+          {/* Tag filter pills */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
+              {allTags.map(t => (
+                <span key={t} onClick={()=>handleTagClick(t)} className={`tag-pill ${activeTag===t?'active':''}`}>{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Content area */}
+        {viewMode === 'calendar' ? (
+          <CalendarView posts={filtered} />
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{background:'#DFF5E8'}}>
+                <Ic n="linkedin" size={24} color="#1E8549" />
+              </div>
+              <p className="text-gray-500 text-sm">Nenhum post encontrado com os filtros aplicados.</p>
+              <button onClick={clearFilters} className="text-xs font-semibold hover:underline" style={{color:'#1E8549'}}>Limpar filtros</button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filtered.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onView={setViewPost}
+                onEdit={p=>setEditPost(p)}
+                onChangeStatus={changeStatus}
+                onDelete={id=>setConfirm({id, msg:'Excluir este post permanentemente?', danger:true, cb:()=>deletePost(id)})}
+                onAddComment={addComment}
+                onAddLeadFeedback={addLead}
+                activeTag={activeTag}
+                onTagClick={handleTagClick}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Modals */}
+      {viewPost && <LinkedInModal post={viewPost} onClose={()=>setViewPost(null)} />}
+      {(showAdd || editPost) && (
+        <PostModal post={editPost||null} onClose={()=>{setShowAdd(false);setEditPost(null);}} onSave={savePost} />
+      )}
+      {confirm && (
+        <ConfirmModal message={confirm.msg} danger={confirm.danger} onConfirm={confirm.cb} onClose={()=>setConfirm(null)} />
+      )}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
