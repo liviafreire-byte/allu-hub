@@ -31,20 +31,20 @@
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     textarea:focus, input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px #1E8549; border-color: #1E8549; }
-    .modal-backdrop { backdrop-filter: blur(6px); }
+    .modal-backdrop { /* backdrop-filter removido — causava lag de GPU a cada keystroke */ }
     .card-hover { transition: box-shadow 0.2s ease, transform 0.2s ease; }
     .card-hover:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.09); transform: translateY(-2px); }
     .fade-in { animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .slide-modal { animation: slideModal 0.22s cubic-bezier(.4,0,.2,1); }
     @keyframes slideModal { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-    .btn { transition: all 0.15s ease; }
+    .btn { transition: opacity 0.15s ease, transform 0.15s ease; }
     .btn:hover { opacity: 0.88; }
     .btn:active { transform: scale(0.97); }
-    .tag-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; transition: all 0.15s; cursor: pointer; }
+    .tag-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; transition: background 0.15s, color 0.15s, border-color 0.15s; cursor: pointer; }
     .tag-pill:hover { background: #DFF5E8; color: #1E8549; border-color: #1E8549; }
     .tag-pill.active { background: #DFF5E8; color: #1E8549; border-color: #1E8549; font-weight: 600; }
-    .view-btn { padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+    .view-btn { padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; transition: background 0.15s, color 0.15s; }
     .view-btn.active { background: #1E8549; color: #fff; }
     .view-btn:not(.active) { background: transparent; color: #6b7280; }
     .view-btn:not(.active):hover { background: #f3f4f6; }
@@ -336,8 +336,8 @@ const LinkedInModal = ({ post, onClose }) => {
   const cleanText = post.legenda.replace(/#\w+/g, '').trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(15,61,46,0.6)'}} onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl slide-modal overflow-hidden flex flex-col" style={{width: isMobile ? 380 : 580, maxHeight:'92vh'}} onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.72)'}} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl slide-modal overflow-hidden flex flex-col" style={{width: isMobile ? 380 : 580, maxHeight:'92vh', willChange:'transform'}} onClick={e=>e.stopPropagation()}>
 
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-shrink-0">
@@ -485,11 +485,11 @@ const PostModal = ({ post, onClose, onSave }) => {
     onClose();
   }, [form, post, onSave, onClose]);
 
-  const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-preto w-full transition-all";
+  const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-preto w-full";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(15,61,46,0.6)'}} onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col slide-modal" onClick={e=>e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.72)'}} onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col slide-modal" style={{willChange:'transform'}} onClick={e=>e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="font-bold text-base" style={{fontWeight:700}}>{post ? 'Editar Post' : 'Novo Post'}</h2>
@@ -589,8 +589,8 @@ const PostModal = ({ post, onClose, onSave }) => {
 
 // ─── Confirm Modal ────────────────────────────────────────────────────────────
 const ConfirmModal = ({ message, onConfirm, onClose, danger=false }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" style={{background:'rgba(0,0,0,0.5)'}} onClick={onClose}>
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-modal" onClick={e=>e.stopPropagation()}>
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.72)'}} onClick={onClose}>
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-modal" style={{willChange:'transform'}} onClick={e=>e.stopPropagation()}>
       <p className="text-sm text-gray-700 leading-relaxed">{message}</p>
       <div className="flex gap-3 mt-5">
         <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
