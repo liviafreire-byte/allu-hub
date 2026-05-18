@@ -1043,7 +1043,13 @@ const CalendarView = memo(({ posts }) => {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 const App = () => {
-  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [posts, setPosts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('allu-linkedin-posts');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return INITIAL_POSTS;
+  });
   const [viewPost, setViewPost] = useState(null);
   const [editPost, setEditPost] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -1051,6 +1057,11 @@ const App = () => {
   const [viewMode, setViewMode] = useState('list');
   const [activeTag, setActiveTag] = useState('');
   const [filters, setFilters] = useState({ status:'', formato:'', objetivo:'', data:'' });
+  const [savedNotice, setSavedNotice] = useState(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('allu-linkedin-posts', JSON.stringify(posts)); } catch {}
+  }, [posts]);
 
   // KPIs
   const kpis = useMemo(() => ({
@@ -1078,11 +1089,13 @@ const App = () => {
   const hasFilters = Object.values(filters).some(v=>v) || !!activeTag;
 
   const savePost = useCallback((form) => {
-    if (form.id) {
-      setPosts(ps => ps.map(p => p.id===form.id ? {...form} : p));
-    } else {
-      setPosts(ps => [...ps, form]);
-    }
+    setPosts(ps => {
+      const exists = ps.some(p => p.id === form.id);
+      if (exists) return ps.map(p => p.id === form.id ? {...form} : p);
+      return [...ps, form];
+    });
+    setSavedNotice(form.id);
+    setTimeout(() => setSavedNotice(null), 4000);
   }, []);
 
   const changeStatus = useCallback((id, newStatus) => {
@@ -1226,6 +1239,24 @@ const App = () => {
           </div>
         )}
       </main>
+
+      {/* Toast: post salvo mas oculto por filtro */}
+      {savedNotice && (() => {
+        const isVisible = filtered.some(p => p.id === savedNotice);
+        const hasFilter = Object.values(filters).some(v=>v) || !!activeTag;
+        if (hasFilter && !isVisible) return (
+          <div className="fixed bottom-5 left-1/2 fade-in" style={{transform:'translateX(-50%)',zIndex:60,background:'#0F3D2E',color:'#fff',borderRadius:14,padding:'12px 20px',fontSize:13,fontWeight:600,boxShadow:'0 4px 20px rgba(0,0,0,0.2)',maxWidth:420,textAlign:'center',whiteSpace:'nowrap'}}>
+            💚 Post salvo, mas oculto pelo filtro atual.{' '}
+            <button onClick={clearFilters} style={{textDecoration:'underline',background:'none',border:'none',color:'#86efac',cursor:'pointer',fontWeight:700,fontSize:13}}>Limpar filtros</button>
+          </div>
+        );
+        if (!isVisible) return null;
+        return (
+          <div className="fixed bottom-5 left-1/2 fade-in" style={{transform:'translateX(-50%)',zIndex:60,background:'#1E8549',color:'#fff',borderRadius:14,padding:'12px 20px',fontSize:13,fontWeight:600,boxShadow:'0 4px 20px rgba(0,0,0,0.2)',whiteSpace:'nowrap'}}>
+            💚 Post salvo com sucesso!
+          </div>
+        );
+      })()}
 
       {/* Modals */}
       {viewPost && <LinkedInModal post={viewPost} onClose={closeViewPost} />}
