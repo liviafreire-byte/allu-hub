@@ -59,7 +59,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef, useMemo } = React;
+const { useState, useEffect, useRef, useMemo, useCallback, memo } = React;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -316,7 +316,7 @@ const EngagementBadge = ({ engajamento }) => {
 };
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-const KPICard = ({ label, value, iconName, accent, iconColor }) => (
+const KPICard = memo(({ label, value, iconName, accent, iconColor }) => (
   <div className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 card-hover" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
     <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{background: accent + '18'}}>
       <Ic n={iconName} size={20} color={iconColor || accent} />
@@ -326,7 +326,7 @@ const KPICard = ({ label, value, iconName, accent, iconColor }) => (
       <div className="text-xs text-gray-500 font-medium mt-0.5 leading-tight">{label}</div>
     </div>
   </div>
-);
+));
 
 // ─── LinkedIn Simulation Modal ────────────────────────────────────────────────
 const LinkedInModal = ({ post, onClose }) => {
@@ -445,6 +445,14 @@ const LinkedInModal = ({ post, onClose }) => {
   );
 };
 
+// ─── ModalField — definido FORA do PostModal para evitar remount a cada tecla ─
+const ModalField = ({ label, children }) => (
+  <div className="flex flex-col gap-1.5">
+    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
+    {children}
+  </div>
+);
+
 // ─── Post Modal (Add/Edit) ────────────────────────────────────────────────────
 const EMPTY = {
   titulo:'', legenda:'', formato:'Post Estático', dataPublicacao:'',
@@ -456,17 +464,17 @@ const PostModal = ({ post, onClose, onSave }) => {
   const [form, setForm] = useState(post ? {...post} : {...EMPTY});
   const [tagInput, setTagInput] = useState('');
 
-  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+  const set = useCallback((k, v) => setForm(f => ({...f, [k]: v})), []);
 
-  const addTag = () => {
+  const addTag = useCallback(() => {
     const t = tagInput.trim().replace(/^#*/, '#');
     if (t.length > 1 && !form.tags.includes(t)) set('tags', [...form.tags, t]);
     setTagInput('');
-  };
+  }, [tagInput, form.tags, set]);
 
-  const removeTag = (t) => set('tags', form.tags.filter(x => x !== t));
+  const removeTag = useCallback((t) => set('tags', form.tags.filter(x => x !== t)), [form.tags, set]);
 
-  const save = () => {
+  const save = useCallback(() => {
     if (!form.titulo.trim()) { alert('Preencha o título interno.'); return; }
     const ts = nowStr();
     if (post) {
@@ -475,14 +483,7 @@ const PostModal = ({ post, onClose, onSave }) => {
       onSave({...form, id: Date.now(), comments:[], feedbackLideranca:[], historico:[{ acao:'Post criado', timestamp: ts }]});
     }
     onClose();
-  };
-
-  const F = ({label, children}) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</label>
-      {children}
-    </div>
-  );
+  }, [form, post, onSave, onClose]);
 
   const ic = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-preto w-full transition-all";
 
@@ -500,52 +501,52 @@ const PostModal = ({ post, onClose, onSave }) => {
         </div>
 
         <div className="overflow-y-auto scrollbar-hide p-6 grid grid-cols-1 gap-4 flex-1">
-          <F label="Título interno *">
+          <ModalField label="Título interno *">
             <input className={ic} value={form.titulo} onChange={e=>set('titulo',e.target.value)} placeholder="Ex: Post de cultura — maio 2026" />
-          </F>
+          </ModalField>
 
-          <F label="Texto da legenda">
+          <ModalField label="Texto da legenda">
             <textarea className={ic} rows={5} value={form.legenda} onChange={e=>set('legenda',e.target.value)} placeholder="Escreva o texto completo que será publicado..." />
-          </F>
+          </ModalField>
 
           <div className="grid grid-cols-2 gap-4">
-            <F label="Formato">
+            <ModalField label="Formato">
               <select className={ic} value={form.formato} onChange={e=>set('formato',e.target.value)}>
                 {FORMATOS.map(f=><option key={f}>{f}</option>)}
               </select>
-            </F>
-            <F label="Status">
+            </ModalField>
+            <ModalField label="Status">
               <select className={ic} value={form.status} onChange={e=>set('status',e.target.value)}>
                 {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
               </select>
-            </F>
+            </ModalField>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <F label="Prioridade">
+            <ModalField label="Prioridade">
               <select className={ic} value={form.prioridade} onChange={e=>set('prioridade',e.target.value)}>
                 {['Alta','Média','Baixa'].map(p=><option key={p}>{p}</option>)}
               </select>
-            </F>
-            <F label="Objetivo do post">
+            </ModalField>
+            <ModalField label="Objetivo do post">
               <select className={ic} value={form.objetivo} onChange={e=>set('objetivo',e.target.value)}>
                 {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
               </select>
-            </F>
+            </ModalField>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <F label="Data prevista de publicação">
+            <ModalField label="Data prevista de publicação">
               <input type="date" className={ic} value={form.dataPublicacao} onChange={e=>set('dataPublicacao',e.target.value)} />
-            </F>
-            <F label="Potencial de engajamento">
+            </ModalField>
+            <ModalField label="Potencial de engajamento">
               <select className={ic} value={form.engajamento} onChange={e=>set('engajamento',e.target.value)}>
                 {['Alto','Médio','Baixo'].map(e=><option key={e}>{e}</option>)}
               </select>
-            </F>
+            </ModalField>
           </div>
 
-          <F label="Tags">
+          <ModalField label="Tags">
             <div className="flex gap-2">
               <input className={ic} value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addTag())} placeholder="Ex: #cultura (Enter para adicionar)" />
               <button onClick={addTag} className="px-4 py-2 rounded-xl text-sm font-semibold text-white btn" style={{background:'#1E8549',flexShrink:0}}>+</button>
@@ -560,19 +561,19 @@ const PostModal = ({ post, onClose, onSave }) => {
                 ))}
               </div>
             )}
-          </F>
+          </ModalField>
 
-          <F label="Link / CTA">
+          <ModalField label="Link / CTA">
             <input className={ic} value={form.linkCTA} onChange={e=>set('linkCTA',e.target.value)} placeholder="https://allu.com.br/..." />
-          </F>
+          </ModalField>
 
-          <F label="URL da imagem">
+          <ModalField label="URL da imagem">
             <input className={ic} value={form.imagemURL} onChange={e=>set('imagemURL',e.target.value)} placeholder="https://images.unsplash.com/..." />
-          </F>
+          </ModalField>
 
-          <F label="Observações internas">
+          <ModalField label="Observações internas">
             <textarea className={ic} rows={3} value={form.observacoes} onChange={e=>set('observacoes',e.target.value)} placeholder="Notas para o time, pendências, instruções..." />
-          </F>
+          </ModalField>
 
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">Cancelar</button>
@@ -711,7 +712,7 @@ const HistorySection = ({ historico }) => (
 );
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-const PostCard = ({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment, onAddLeadFeedback, activeTag, onTagClick }) => {
+const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment, onAddLeadFeedback, activeTag, onTagClick }) => {
   const [openSection, setOpenSection] = useState(null);
   const toggle = (s) => setOpenSection(v => v === s ? null : s);
   const sc = STATUS_CONFIG[post.status] || STATUS_CONFIG['Rascunho'];
@@ -822,10 +823,10 @@ const PostCard = ({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment
       </div>
     </div>
   );
-};
+});
 
 // ─── Calendar View ────────────────────────────────────────────────────────────
-const CalendarView = ({ posts }) => {
+const CalendarView = memo(({ posts }) => {
   const today = new Date();
   const [cur, setCur] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -907,7 +908,7 @@ const CalendarView = ({ posts }) => {
       </div>
     </div>
   );
-};
+});
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 const App = () => {
@@ -941,31 +942,36 @@ const App = () => {
 
   const allTags = useMemo(() => [...new Set(posts.flatMap(p => p.tags||[]))].sort(), [posts]);
 
-  const setF = (k, v) => setFilters(f => ({...f, [k]: v}));
-  const clearFilters = () => { setFilters({status:'',formato:'',objetivo:'',data:''}); setActiveTag(''); };
+  const setF = useCallback((k, v) => setFilters(f => ({...f, [k]: v})), []);
+  const clearFilters = useCallback(() => { setFilters({status:'',formato:'',objetivo:'',data:''}); setActiveTag(''); }, []);
   const hasFilters = Object.values(filters).some(v=>v) || !!activeTag;
 
-  const savePost = (form) => {
-    if (form.id && posts.find(p=>p.id===form.id)) {
+  const savePost = useCallback((form) => {
+    if (form.id) {
       setPosts(ps => ps.map(p => p.id===form.id ? {...form} : p));
     } else {
       setPosts(ps => [...ps, form]);
     }
-  };
+  }, []);
 
-  const changeStatus = (id, newStatus) => {
+  const changeStatus = useCallback((id, newStatus) => {
     setPosts(ps => ps.map(p => p.id===id ? {
       ...p, status: newStatus,
       historico: [...(p.historico||[]), { acao: `Status alterado para ${newStatus}`, timestamp: nowStr() }]
     } : p));
-  };
+  }, []);
 
-  const deletePost = (id) => setPosts(ps => ps.filter(p => p.id!==id));
+  const deletePost = useCallback((id) => setPosts(ps => ps.filter(p => p.id!==id)), []);
 
-  const addComment = (pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, comments:[...p.comments,c]} : p));
-  const addLead = (pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, feedbackLideranca:[...(p.feedbackLideranca||[]),c]} : p));
+  const addComment = useCallback((pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, comments:[...p.comments,c]} : p)), []);
+  const addLead = useCallback((pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, feedbackLideranca:[...(p.feedbackLideranca||[]),c]} : p)), []);
 
-  const handleTagClick = (t) => setActiveTag(v => v===t ? '' : t);
+  const handleTagClick = useCallback((t) => setActiveTag(v => v===t ? '' : t), []);
+
+  const openEdit = useCallback((p) => setEditPost(p), []);
+  const closeModal = useCallback(() => { setShowAdd(false); setEditPost(null); }, []);
+  const closeViewPost = useCallback(() => setViewPost(null), []);
+  const closeConfirm = useCallback(() => setConfirm(null), []);
 
   const sc = "border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 cursor-pointer focus:ring-0";
 
@@ -1077,7 +1083,7 @@ const App = () => {
                 key={post.id}
                 post={post}
                 onView={setViewPost}
-                onEdit={p=>setEditPost(p)}
+                onEdit={openEdit}
                 onChangeStatus={changeStatus}
                 onDelete={id=>setConfirm({id, msg:'Excluir este post permanentemente?', danger:true, cb:()=>deletePost(id)})}
                 onAddComment={addComment}
@@ -1091,12 +1097,12 @@ const App = () => {
       </main>
 
       {/* Modals */}
-      {viewPost && <LinkedInModal post={viewPost} onClose={()=>setViewPost(null)} />}
+      {viewPost && <LinkedInModal post={viewPost} onClose={closeViewPost} />}
       {(showAdd || editPost) && (
-        <PostModal post={editPost||null} onClose={()=>{setShowAdd(false);setEditPost(null);}} onSave={savePost} />
+        <PostModal post={editPost||null} onClose={closeModal} onSave={savePost} />
       )}
       {confirm && (
-        <ConfirmModal message={confirm.msg} danger={confirm.danger} onConfirm={confirm.cb} onClose={()=>setConfirm(null)} />
+        <ConfirmModal message={confirm.msg} danger={confirm.danger} onConfirm={confirm.cb} onClose={closeConfirm} />
       )}
     </div>
   );
