@@ -9,6 +9,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -36,12 +37,13 @@
     .card-hover:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.09); transform: translateY(-2px); }
     .fade-in { animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .slide-modal { animation: slideModal 0.22s cubic-bezier(.4,0,.2,1); }
     @keyframes slideModal { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     .btn { transition: opacity 0.15s ease, transform 0.15s ease; }
     .btn:hover { opacity: 0.88; }
     .btn:active { transform: scale(0.97); }
-    .tag-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; transition: background 0.15s, color 0.15s, border-color 0.15s; cursor: pointer; }
+    .tag-pill { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 500; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; white-space: nowrap; line-height: 1; transition: background 0.15s, color 0.15s, border-color 0.15s; cursor: pointer; flex-shrink: 0; }
     .tag-pill:hover { background: #DFF5E8; color: #1E8549; border-color: #1E8549; }
     .tag-pill.active { background: #DFF5E8; color: #1E8549; border-color: #1E8549; font-weight: 600; }
     .view-btn { padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; transition: background 0.15s, color 0.15s; }
@@ -60,12 +62,125 @@
     .media-preview-img { width: 100%; border-radius: 10px; max-height: 180px; object-fit: cover; display: block; }
     .media-preview-video { width: 100%; border-radius: 10px; max-height: 180px; display: block; background: #000; }
     .modal-open { overflow: hidden; }
+    .inline-edit-span:hover { background: rgba(30,133,73,0.07); border-radius: 4px; }
+    .inline-edit-span { border-radius: 4px; transition: background 0.15s; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useMemo, useCallback, memo } = React;
+
+// ─── Supabase Storage ─────────────────────────────────────────────────────────
+// Preencha com suas credenciais do projeto Supabase.
+// Veja o guia de configuração no README ou nos comentários abaixo.
+const SUPABASE_URL      = "https://lbjnwknvmvvvbkobsmbg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_DwutKFHg0A0XLEjtRrR6pA_bC3TPlo7";
+const SUPABASE_BUCKET   = "posts-media";
+
+console.log("SUPABASE_URL:", SUPABASE_URL);
+
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function uploadMedia(file) {
+  // Sanitiza o nome do arquivo: remove acentos, substitui espaços e caracteres especiais
+  const ext          = file.name.split('.').pop().toLowerCase();
+  const safeName     = file.name
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .replace(/[^a-zA-Z0-9.\-_]/g, '-')               // caracteres especiais → hífen
+    .replace(/-+/g, '-')                              // hifens duplos → único
+    .toLowerCase();
+  const filePath = `${Date.now()}-${safeName}`;
+
+  console.log("SUPABASE UPLOAD — filePath:", filePath);
+  console.log("SUPABASE UPLOAD — fileType:", file.type, "| fileSize:", file.size);
+
+  const { data, error } = await supabaseClient.storage
+    .from(SUPABASE_BUCKET)
+    .upload(filePath, file, { cacheControl: "31536000", upsert: false });
+
+  if (error) {
+    console.error("Supabase upload error:", error);
+    throw new Error(error.message);
+  }
+
+  console.log("UPLOAD RESULT:", data);
+
+  const { data: publicData } = supabaseClient.storage
+    .from(SUPABASE_BUCKET)
+    .getPublicUrl(filePath);
+
+  const mediaUrl = publicData.publicUrl;
+  console.log("PUBLIC MEDIA URL:", mediaUrl);
+  return mediaUrl;
+}
+
+// ─── Supabase DB helpers ──────────────────────────────────────────────────────
+function postToDb(p) {
+  return {
+    id: p.id,
+    titulo: p.titulo || '',
+    legenda: p.legenda || '',
+    formato: p.formato || 'Post Estático',
+    status: p.status || 'Rascunho',
+    prioridade: p.prioridade || 'Média',
+    objetivo: p.objetivo || 'Employer Branding',
+    engajamento: p.engajamento || 'Médio',
+    tags: p.tags || [],
+    media_url: p.mediaURL || '',
+    media_type: p.mediaType || 'image',
+    file_name: p.fileName || '',
+    file_size: p.fileSize || 0,
+    link_cta: p.linkCTA || '',
+    observacoes: p.observacoes || '',
+    text_content: p.textContent || '',
+    content_title: p.contentTitle || '',
+    content_description: p.contentDescription || '',
+    full_text: p.fullText || '',
+    cover_url: p.coverUrl || '',
+    cover_file_name: p.coverFileName || '',
+    cover_file_size: p.coverFileSize || 0,
+    comments: p.comments || [],
+    feedback_lideranca: p.feedbackLideranca || [],
+    historico: p.historico || [],
+    data_publicacao: p.dataPublicacao || '',
+    newsletter_name: p.newsletterName || '',
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function dbToPost(row) {
+  return {
+    id: row.id,
+    titulo: row.titulo || '',
+    legenda: row.legenda || '',
+    formato: row.formato || 'Post Estático',
+    status: row.status || 'Rascunho',
+    prioridade: row.prioridade || 'Média',
+    objetivo: row.objetivo || 'Employer Branding',
+    engajamento: row.engajamento || 'Médio',
+    tags: row.tags || [],
+    mediaURL: row.media_url || '',
+    mediaType: row.media_type || 'image',
+    fileName: row.file_name || '',
+    fileSize: row.file_size || 0,
+    linkCTA: row.link_cta || '',
+    observacoes: row.observacoes || '',
+    textContent: row.text_content || '',
+    contentTitle: row.content_title || '',
+    contentDescription: row.content_description || '',
+    fullText: row.full_text || '',
+    coverUrl: row.cover_url || '',
+    coverFileName: row.cover_file_name || '',
+    coverFileSize: row.cover_file_size || 0,
+    comments: row.comments || [],
+    feedbackLideranca: row.feedback_lideranca || [],
+    historico: row.historico || [],
+    dataPublicacao:  row.data_publicacao  || '',
+    newsletterName:  row.newsletter_name  || '',
+    updated_at:      row.updated_at       || '',
+  };
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -90,19 +205,26 @@ const ENGAGEMENT_CONFIG = {
 };
 
 const FORMAT_CONFIG = {
-  'Carrossel':    { bg: '#f5f3ff', text: '#7c3aed' },
-  'Post Estático':{ bg: '#f0f9ff', text: '#0284c7' },
-  'Vídeo':        { bg: '#fff7ed', text: '#ea580c' },
-  'Artigo':       { bg: '#f0fdfa', text: '#0d9488' },
+  'Post':       { bg: '#f0f9ff', text: '#0284c7' },
+  'Artigo':     { bg: '#f0fdfa', text: '#0d9488' },
+  'Newsletter': { bg: '#fdf4ff', text: '#9333ea' },
 };
 
-const OBJETIVOS = ['Employer Branding','Vaga','Cultura','Expansão','Engajamento','Newsletter','Artigo','Resultados','Institucional'];
-const FORMATOS  = ['Carrossel','Post Estático','Vídeo','Artigo'];
+const OBJETIVOS = ['Employer Branding','Vaga','Cultura','Expansão','Engajamento','Resultados','Institucional'];
+const FORMATOS  = ['Post', 'Artigo', 'Newsletter'];
 const STATUS_KEYS = Object.keys(STATUS_CONFIG);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtDate = d => { if (!d) return '—'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; };
-const nowStr = () => { const d=new Date(); return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; };
+const nowStr  = () => { const d=new Date(); return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; };
+const nowISO  = () => new Date().toISOString();
+const fmtISO  = (iso) => { if (!iso) return ''; try { const d=new Date(iso); return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; } catch { return iso; } };
+const makeHistEntry = (acao, autor, de, para) => ({
+  acao, autor: autor || '—', iso_timestamp: nowISO(), timestamp: nowStr(),
+  ...(de !== undefined && String(de||'') !== String(para||'') ? { de: String(de||'').slice(0,300), para: String(para||'').slice(0,300) } : {}),
+});
+const FIELD_TO_DB = { legenda:'legenda', titulo:'titulo', linkCTA:'link_cta', contentTitle:'content_title', contentDescription:'content_description', fullText:'full_text', newsletterName:'newsletter_name', textContent:'text_content' };
+const FIELD_LABEL = { legenda:'a legenda', titulo:'o título', linkCTA:'o link/CTA', contentTitle:'o título', contentDescription:'a descrição', fullText:'o texto completo', newsletterName:'o nome da newsletter', textContent:'o texto' };
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const ICONS = {
@@ -144,6 +266,7 @@ const ICONS = {
   upload:        <><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></>,
   video:         <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>,
   'play-circle': <><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></>,
+  mail:          <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></>,
 };
 
 const Ic = ({ n, size=16, color='currentColor', sw=2 }) => (
@@ -286,11 +409,17 @@ const AlluLogo = ({ size=38 }) => (
 );
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
+const BADGE_BASE = {
+  display:'inline-flex', alignItems:'center', justifyContent:'center',
+  height:22, borderRadius:999, fontSize:11, fontWeight:600,
+  padding:'0 10px', whiteSpace:'nowrap', lineHeight:1, flexShrink:0,
+};
+
 const StatusBadge = ({ status }) => {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG['Rascunho'];
   return (
-    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:999,fontSize:11,fontWeight:600}}>
-      <Ic n={cfg.icon} size={11} color={cfg.text} />
+    <span style={{...BADGE_BASE, background:cfg.bg, color:cfg.text, gap:5}}>
+      <Ic n={cfg.icon} size={11} color={cfg.text} sw={2.2} />
       {cfg.label}
     </span>
   );
@@ -299,8 +428,8 @@ const StatusBadge = ({ status }) => {
 const PriorityBadge = ({ priority }) => {
   const cfg = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG['Média'];
   return (
-    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:4,padding:'2px 8px',borderRadius:999,fontSize:11,fontWeight:600}}>
-      <span style={{width:6,height:6,borderRadius:999,background:cfg.dot,display:'inline-block'}}/>
+    <span style={{...BADGE_BASE, background:cfg.bg, color:cfg.text, gap:5}}>
+      <span style={{width:6,height:6,borderRadius:999,background:cfg.dot,flexShrink:0,display:'block'}}/>
       {priority}
     </span>
   );
@@ -309,7 +438,7 @@ const PriorityBadge = ({ priority }) => {
 const FormatBadge = ({ formato }) => {
   const cfg = FORMAT_CONFIG[formato] || {bg:'#f3f4f6',text:'#6b7280'};
   return (
-    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',padding:'2px 8px',borderRadius:999,fontSize:11,fontWeight:600}}>
+    <span style={{...BADGE_BASE, background:cfg.bg, color:cfg.text}}>
       {formato}
     </span>
   );
@@ -318,9 +447,95 @@ const FormatBadge = ({ formato }) => {
 const EngagementBadge = ({ engajamento }) => {
   const cfg = ENGAGEMENT_CONFIG[engajamento] || ENGAGEMENT_CONFIG['Médio'];
   return (
-    <span style={{background:cfg.bg,color:cfg.text,display:'inline-flex',alignItems:'center',gap:5,padding:'3px 10px',borderRadius:999,fontSize:11,fontWeight:600}}>
-      {cfg.emoji} {cfg.label}
+    <span style={{...BADGE_BASE, background:cfg.bg, color:cfg.text, gap:5}}>
+      <span style={{lineHeight:1, display:'flex', alignItems:'center'}}>{cfg.emoji}</span>
+      {cfg.label}
     </span>
+  );
+};
+
+const ObjetivoBadge = ({ objetivo }) => (
+  <span style={{...BADGE_BASE, background:'#F5F5F5', color:'#6b7280', border:'1px solid #e5e7eb', gap:5}}>
+    <Ic n="target" size={10} color="#9ca3af" sw={2} />
+    {objetivo}
+  </span>
+);
+
+// ─── UserModal ────────────────────────────────────────────────────────────────
+const UserModal = ({ onConfirm }) => {
+  const inputRef = useRef(null);
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 80); }, []);
+  const submit = () => {
+    const name = inputRef.current?.value?.trim();
+    if (!name) { inputRef.current?.focus(); return; }
+    onConfirm(name);
+  };
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.78)'}}>
+      <div className="bg-white rounded-2xl shadow-2xl slide-modal p-8 flex flex-col items-center gap-6" style={{width:360,maxWidth:'100%'}}>
+        <AlluLogo size={52} />
+        <div className="text-center">
+          <h2 className="text-lg font-extrabold" style={{color:'#111'}}>Bem-vindo ao Painel!</h2>
+          <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">Como você se chama? Seu nome será registrado no histórico de edições e nos comentários.</p>
+        </div>
+        <input
+          ref={inputRef}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium"
+          placeholder="Ex: Lívia, Isabela, Gabriel..."
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          style={{color:'#111'}}
+        />
+        <button onClick={submit} className="w-full py-3 rounded-xl text-white font-bold btn text-sm" style={{background:'linear-gradient(135deg,#1E8549,#0F3D2E)',boxShadow:'0 2px 10px rgba(30,133,73,0.3)'}}>
+          Entrar no painel
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ─── InlineEdit ───────────────────────────────────────────────────────────────
+const InlineEdit = ({ value, onSave, multiline, placeholder, style, tag }) => {
+  const Tag      = tag || 'span';
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState(value || '');
+  const ref = useRef(null);
+
+  useEffect(() => { if (!editing) setDraft(value || ''); }, [value, editing]);
+
+  const start  = () => { console.log('[allu] InlineEdit: clique para editar', { value }); setDraft(value || ''); setEditing(true); };
+  const cancel = () => { setEditing(false); setDraft(value || ''); };
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed !== (value || '').trim()) onSave(trimmed);
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); cancel(); return; }
+    if (e.key === 'Enter' && (!multiline || e.ctrlKey || e.metaKey)) { e.preventDefault(); commit(); }
+  };
+  useEffect(() => {
+    if (editing && ref.current) {
+      ref.current.focus();
+      const len = ref.current.value.length;
+      ref.current.setSelectionRange?.(len, len);
+    }
+  }, [editing]);
+
+  if (editing) {
+    const es = { fontFamily:'inherit', fontSize:'inherit', fontWeight:'inherit', lineHeight:'inherit', color:'inherit', letterSpacing:'inherit', background:'#f0fdf4', border:'1.5px solid #1E8549', borderRadius:6, padding:'2px 6px', width:'100%', outline:'none', resize: multiline ? 'vertical' : 'none', ...style };
+    return multiline
+      ? <textarea ref={ref} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={onKeyDown} style={{...es, minHeight:56, display:'block'}} />
+      : <input    ref={ref} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={onKeyDown} style={es} />;
+  }
+
+  const displayStyle = { ...style, cursor:'text', borderRadius:4, padding:'1px 4px', display: (Tag==='p'||Tag==='div') ? 'block' : 'inline', minWidth:40 };
+  return (
+    <Tag onClick={start} title="Clique para editar" style={displayStyle} className="inline-edit-span">
+      {value
+        ? <>{value}</>
+        : <span style={{color:'#9ca3af',fontStyle:'italic',fontWeight:400,fontSize:'0.9em'}}>{placeholder || 'Clique para editar'}</span>
+      }
+    </Tag>
   );
 };
 
@@ -338,25 +553,42 @@ const KPICard = memo(({ label, value, iconName, accent, iconColor }) => (
 ));
 
 // ─── LinkedIn Simulation Modal ────────────────────────────────────────────────
-const LinkedInModal = ({ post, onClose }) => {
-  const [device, setDevice] = useState('desktop');
+const LinkedInModal = ({ post, onClose, onInlineEdit, currentUser }) => {
+  const [device,     setDevice]     = useState('desktop');
+  const [saveStatus, setSaveStatus] = useState(''); // '' | 'saving' | 'saved' | 'conflict'
   const isMobile = device === 'mobile';
-  const hashtags = (post.legenda.match(/#\w+/g) || []);
-  const cleanText = post.legenda.replace(/#\w+/g, '').trim();
+
+  const hashtags = ((post.legenda||'').match(/#\w+/g) || []);
+  const cleanText = (post.legenda||'').replace(/#\w+/g, '').trim();
+
+  const handleInline = useCallback(async (field, newValue) => {
+    if (!onInlineEdit) return;
+    setSaveStatus('saving');
+    const result = await onInlineEdit(field, newValue);
+    if (result?.conflict) {
+      setSaveStatus('conflict');
+    } else if (result?.error) {
+      setSaveStatus('');
+      alert('Erro ao salvar: ' + result.error);
+    } else {
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus(s => s === 'saved' ? '' : s), 2500);
+    }
+  }, [onInlineEdit]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:'rgba(10,30,20,0.72)'}} onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl slide-modal overflow-hidden flex flex-col" style={{width: isMobile ? 380 : 580, maxHeight:'92vh', willChange:'transform'}} onClick={e=>e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl slide-modal overflow-hidden flex flex-col" style={{width: isMobile ? 390 : 590, maxHeight:'92vh', willChange:'transform'}} onClick={e=>e.stopPropagation()}>
 
-        {/* Modal header */}
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <Ic n="linkedin" size={16} color="#0A66C2" />
-              <span className="text-sm font-semibold text-gray-700">Prévia do Post</span>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <Ic n="linkedin" size={16} color="#0A66C2" />
+            <span className="text-sm font-semibold text-gray-700">Prévia do Post</span>
+            {saveStatus === 'saving'   && <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600"><span style={{width:8,height:8,borderRadius:'50%',border:'2px solid #d97706',borderTopColor:'transparent',display:'inline-block',animation:'spin 0.7s linear infinite'}} />Salvando…</span>}
+            {saveStatus === 'saved'    && <span className="text-xs font-semibold" style={{color:'#1E8549'}}>✓ Salvo</span>}
+            {saveStatus === 'conflict' && <span className="text-xs font-semibold text-red-500">⚠ Conflito de edição</span>}
           </div>
-          {/* Device toggle */}
           <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
             <button onClick={()=>setDevice('desktop')} className={`view-btn flex items-center gap-1.5 ${device==='desktop'?'active':''}`}>
               <Ic n="monitor" size={13} color={device==='desktop'?'#fff':'#6b7280'} /> Desktop
@@ -370,69 +602,144 @@ const LinkedInModal = ({ post, onClose }) => {
           </button>
         </div>
 
+        {/* Conflict banner */}
+        {saveStatus === 'conflict' && (
+          <div className="flex items-center gap-3 px-5 py-2.5 flex-shrink-0" style={{background:'#fffbeb',borderBottom:'1px solid #fde68a'}}>
+            <Ic n="alert" size={14} color="#d97706" />
+            <span className="text-xs font-medium flex-1" style={{color:'#92400e'}}>Este post foi editado por outra pessoa. Recarregue a página antes de continuar editando.</span>
+            <button onClick={()=>setSaveStatus('')} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{background:'#fde68a',color:'#92400e'}}>Fechar</button>
+          </div>
+        )}
+
+        {/* Edit hint */}
+        {onInlineEdit && saveStatus === '' && (
+          <div className="flex items-center gap-2 px-5 py-2 flex-shrink-0" style={{background:'#f0fdf4',borderBottom:'1px solid #dcfce7'}}>
+            <Ic n="edit" size={12} color="#1E8549" />
+            <span className="text-xs" style={{color:'#166534'}}>Clique em qualquer texto para editar diretamente na prévia. Enter salva · Esc cancela.</span>
+          </div>
+        )}
+
         <div className="overflow-y-auto scrollbar-hide p-5 flex-1">
-          {/* LinkedIn Card */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.08)', maxWidth: isMobile ? 340 : '100%', margin: '0 auto'}}>
+          {/* LinkedIn card */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.08)', maxWidth: isMobile ? 350 : '100%', margin:'0 auto'}}>
+
+            {/* Author header */}
             <div className="p-4 flex items-start gap-3">
               <AlluLogo size={isMobile ? 38 : 44} />
               <div className="flex-1 min-w-0">
                 <div className="font-bold text-sm" style={{color:'#111',fontWeight:700}}>allu</div>
                 <div className="text-xs text-gray-500">{isMobile ? 'Employer Branding' : 'Empresa · Employer Branding · 1.2 mil seguidores'}</div>
-                <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                  <span>Agora ·</span>
-                  <Ic n="globe" size={10} color="#9ca3af" />
-                </div>
+                <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><span>Agora ·</span><Ic n="globe" size={10} color="#9ca3af" /></div>
               </div>
-              <button className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors" style={{borderColor:'#1E8549',color:'#1E8549',fontSize:isMobile?11:12}}>+ Seguir</button>
+              <button className="text-xs font-semibold px-3 py-1.5 rounded-full border" style={{borderColor:'#1E8549',color:'#1E8549',fontSize:isMobile?11:12}}>+ Seguir</button>
             </div>
 
+            {/* Legenda */}
             <div className="px-4 pb-3">
-              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line" style={{fontSize: isMobile ? 13 : 14}}>{cleanText}</p>
-              {hashtags.length > 0 && (
-                <p className="mt-2 text-sm font-semibold" style={{color:'#1E8549', fontSize: isMobile ? 12 : 13}}>
-                  {hashtags.join(' ')}
-                </p>
+              <InlineEdit
+                tag="p"
+                value={post.legenda}
+                onSave={v => handleInline('legenda', v)}
+                multiline
+                placeholder="Legenda do post..."
+                style={{fontSize: isMobile ? 13 : 14, color:'#1f2937', lineHeight:1.65, whiteSpace:'pre-line', margin:0}}
+              />
+              {post.mediaType === 'text' && (
+                <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #f0fdf4'}}>
+                  <InlineEdit
+                    tag="p"
+                    value={post.textContent}
+                    onSave={v => handleInline('textContent', v)}
+                    multiline
+                    placeholder="Texto do post..."
+                    style={{fontSize: isMobile ? 13 : 14, color:'#374151', lineHeight:1.65, whiteSpace:'pre-line', margin:0}}
+                  />
+                </div>
               )}
             </div>
 
-            {post.mediaURL && post.mediaType === 'video' ? (
-              <div className="w-full overflow-hidden" style={{background:'#000'}}>
-                <video src={post.mediaURL} controls preload="metadata" style={{width:'100%',maxHeight: isMobile ? 200 : 320,display:'block'}} />
-              </div>
-            ) : post.mediaURL ? (
-              <div className="w-full overflow-hidden" style={{maxHeight: isMobile ? 200 : 320, background:'#f3f4f6'}}>
-                <img src={post.mediaURL} alt="" className="w-full object-cover" style={{maxHeight: isMobile ? 200 : 320}} onError={e=>{e.target.style.display='none'}} />
-              </div>
-            ) : (
-              <div className="mx-4 mb-3 rounded-xl flex items-center justify-center" style={{height: isMobile ? 140 : 200, background:'#DFF5E8'}}>
-                <div className="text-center">
-                  <Ic n="image" size={28} color="#1E8549" />
-                  <div className="text-xs mt-1 font-medium" style={{color:'#1E8549'}}>Arte do post</div>
+            {/* Media (unchanged — não editável inline) */}
+            {post.mediaType !== 'text' && (
+              post.mediaURL && post.mediaType === 'video' ? (
+                <div className="w-full overflow-hidden" style={{background:'#000'}}>
+                  <video src={post.mediaURL} controls preload="metadata" style={{width:'100%',maxHeight: isMobile ? 200 : 320,display:'block'}} />
+                </div>
+              ) : post.mediaURL ? (
+                <div className="w-full overflow-hidden" style={{maxHeight: isMobile ? 200 : 320, background:'#f3f4f6'}}>
+                  <img src={post.mediaURL} alt="" className="w-full object-cover" style={{maxHeight: isMobile ? 200 : 320}} onError={e=>{e.target.style.display='none'}} />
+                </div>
+              ) : (
+                <div className="mx-4 mb-3 rounded-xl flex items-center justify-center" style={{height: isMobile ? 140 : 200, background:'#DFF5E8'}}>
+                  <div className="text-center"><Ic n="image" size={28} color="#1E8549" /><div className="text-xs mt-1 font-medium" style={{color:'#1E8549'}}>Arte do post</div></div>
+                </div>
+              )
+            )}
+
+            {/* Artigo */}
+            {post.formato === 'Artigo' && (
+              <div className="mx-4 mb-4 rounded-xl overflow-hidden border border-gray-200">
+                {post.coverUrl
+                  ? <img src={post.coverUrl} alt="capa" style={{width:'100%',maxHeight: isMobile ? 160 : 240,objectFit:'cover',display:'block'}} onError={e=>{e.target.style.display='none'}} />
+                  : <div style={{height: isMobile ? 100 : 140, background:'linear-gradient(135deg,#0d7a6a,#0d9488)', display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n="file" size={32} color="rgba(255,255,255,0.5)" /></div>
+                }
+                <div style={{padding:'12px 14px',background:'#fff'}}>
+                  <span style={{fontSize:10,fontWeight:700,color:'#0d9488',textTransform:'uppercase',letterSpacing:'0.08em'}}>Artigo</span>
+                  <InlineEdit tag="p" value={post.contentTitle} onSave={v=>handleInline('contentTitle',v)} placeholder="Título do artigo..." style={{margin:'4px 0 0',fontSize: isMobile?14:16,fontWeight:700,color:'#111',lineHeight:1.3}} />
+                  <InlineEdit tag="p" value={post.contentDescription} onSave={v=>handleInline('contentDescription',v)} multiline placeholder="Descrição do artigo..." style={{margin:'6px 0 0',fontSize: isMobile?12:13,color:'#6b7280',lineHeight:1.5}} />
+                  <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #f3f4f6'}}>
+                    <p style={{fontSize:11,fontWeight:600,color:'#9ca3af',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>Texto completo</p>
+                    <InlineEdit tag="div" value={post.fullText} onSave={v=>handleInline('fullText',v)} multiline placeholder="Texto completo do artigo..." style={{fontSize: isMobile?12:13,color:'#374151',lineHeight:1.7,whiteSpace:'pre-line'}} />
+                  </div>
+                  <div style={{marginTop:10,display:'flex',alignItems:'center',gap:6}}><AlluLogo size={20} /><span style={{fontSize:11,color:'#6b7280'}}>allu · Artigo</span></div>
                 </div>
               </div>
             )}
 
-            {post.linkCTA && (
-              <div className="mx-4 mb-3 border border-gray-200 rounded-lg p-3 flex items-center justify-between bg-gray-50">
-                <div className="text-xs text-gray-500 truncate">{post.linkCTA}</div>
-                <Ic n="link" size={13} color="#9ca3af" />
+            {/* Newsletter */}
+            {post.formato === 'Newsletter' && (
+              <div className="mx-4 mb-4 rounded-xl overflow-hidden border border-gray-200">
+                {post.coverUrl
+                  ? <img src={post.coverUrl} alt="capa" style={{width:'100%',maxHeight: isMobile ? 160 : 220,objectFit:'cover',display:'block'}} onError={e=>{e.target.style.display='none'}} />
+                  : <div style={{height: isMobile ? 100 : 140, background:'linear-gradient(135deg,#7e22ce,#9333ea)', display:'flex',alignItems:'center',justifyContent:'center'}}><Ic n="mail" size={32} color="rgba(255,255,255,0.6)" /></div>
+                }
+                <div style={{padding:'14px',background:'#fff'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                    <div style={{width:20,height:20,borderRadius:'50%',background:'#9333ea',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Ic n="mail" size={10} color="#fff" /></div>
+                    <InlineEdit value={post.newsletterName} onSave={v=>handleInline('newsletterName',v)} placeholder="Nome da newsletter" style={{fontSize:11,fontWeight:700,color:'#9333ea',textTransform:'uppercase',letterSpacing:'0.06em'}} />
+                  </div>
+                  <InlineEdit tag="p" value={post.contentTitle} onSave={v=>handleInline('contentTitle',v)} placeholder="Título da edição..." style={{margin:'0 0 4px',fontSize: isMobile?15:18,fontWeight:700,color:'#111',lineHeight:1.3}} />
+                  <InlineEdit tag="p" value={post.contentDescription} onSave={v=>handleInline('contentDescription',v)} multiline placeholder="Descrição da edição..." style={{fontSize: isMobile?12:13,color:'#6b7280',lineHeight:1.5,margin:'4px 0 0'}} />
+                  <div style={{marginTop:12,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}><AlluLogo size={20} /><span style={{fontSize:11,color:'#6b7280'}}>allu · Newsletter</span></div>
+                    <span style={{fontSize:11,fontWeight:600,color:'#9333ea',padding:'4px 10px',borderRadius:12,border:'1px solid #9333ea'}}>Ver edição</span>
+                  </div>
+                </div>
               </div>
             )}
 
-            <div className="px-4 pb-2 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <span className="text-sm">👍 ❤️ 🎉</span>
-                <span className="text-xs text-gray-400 ml-1">142</span>
-              </div>
-              <span className="text-xs text-gray-400">18 comentários</span>
+            {/* CTA / Link */}
+            <div className="mx-4 mb-3">
+              {post.linkCTA ? (
+                <div className="border border-gray-200 rounded-lg p-3 flex items-center justify-between bg-gray-50">
+                  <InlineEdit value={post.linkCTA} onSave={v=>handleInline('linkCTA',v)} placeholder="Link/CTA..." style={{fontSize:12,color:'#6b7280',flex:1}} />
+                  <Ic n="link" size={13} color="#9ca3af" />
+                </div>
+              ) : onInlineEdit ? (
+                <div className="border border-dashed border-gray-200 rounded-lg p-2.5 flex items-center gap-2 cursor-text" onClick={()=>{}} style={{opacity:0.5}}>
+                  <Ic n="link" size={12} color="#9ca3af" />
+                  <InlineEdit value="" onSave={v=>handleInline('linkCTA',v)} placeholder="Adicionar link/CTA..." style={{fontSize:12,color:'#9ca3af'}} />
+                </div>
+              ) : null}
             </div>
 
+            <div className="px-4 pb-2 flex items-center justify-between">
+              <div className="flex items-center gap-1"><span className="text-sm">👍 ❤️ 🎉</span><span className="text-xs text-gray-400 ml-1">142</span></div>
+              <span className="text-xs text-gray-400">18 comentários</span>
+            </div>
             <div className="border-t border-gray-100 flex">
               {['Curtir','Comentar','Compartilhar'].map((a,i)=>(
                 <button key={i} className="flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:bg-gray-50 transition-colors font-medium">
-                  {i===0 && <Ic n="heart" size={13} />}
-                  {i===1 && <Ic n="msg" size={13} />}
-                  {i===2 && <Ic n="repeat" size={13} />}
+                  {i===0&&<Ic n="heart" size={13}/>}{i===1&&<Ic n="msg" size={13}/>}{i===2&&<Ic n="repeat" size={13}/>}
                   {isMobile ? '' : a}
                 </button>
               ))}
@@ -466,70 +773,206 @@ const ModalField = ({ label, children }) => (
   </div>
 );
 
-// ─── MediaUpload — componente de upload local, fora de PostModal ─────────────
-const ACCEPTED = 'image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm';
+// ─── MediaUpload — upload real via Supabase Storage ──────────────────────────
+const ACCEPT_IMAGE = 'image/jpeg,image/png,image/webp';
+const ACCEPT_VIDEO = 'video/mp4,video/quicktime,video/webm';
 
-const MediaUpload = memo(({ mediaURL, mediaType, onSelect, onRemove }) => {
-  const fileRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
+const MediaUpload = memo(({ mediaURL, contentType, onSelect, onRemove }) => {
+  const fileRef  = useRef(null);
+  const [dragging,  setDragging]  = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress,  setProgress]  = useState(0);   // 0-100 (simulado enquanto faz upload)
+  const [uploadErr, setUploadErr] = useState('');
 
-  const processFile = useCallback((file) => {
+  const acceptStr   = contentType === 'video' ? ACCEPT_VIDEO : ACCEPT_IMAGE;
+  const helpText    = contentType === 'video' ? 'MP4, MOV ou WEBM — máx. 250 MB' : 'JPG, PNG ou WEBP — máx. 20 MB';
+  const uploadLabel = contentType === 'video' ? 'Clique para selecionar o vídeo ou arraste aqui' : 'Clique para selecionar a imagem ou arraste aqui';
+  const maxBytes    = contentType === 'video' ? 250 * 1024 * 1024 : 20 * 1024 * 1024;
+
+  const processFile = useCallback(async (file) => {
     if (!file) return;
+    setUploadErr('');
     const isImg = file.type.startsWith('image/');
     const isVid = file.type.startsWith('video/');
-    if (!isImg && !isVid) { alert('Formato não suportado. Use JPG, PNG, WEBP, MP4, MOV ou WEBM.'); return; }
-    // Revoga URL anterior se era blob
-    if (mediaURL && mediaURL.startsWith('blob:')) URL.revokeObjectURL(mediaURL);
-    onSelect(URL.createObjectURL(file), isImg ? 'image' : 'video');
-  }, [mediaURL, onSelect]);
+    if (contentType === 'image' && !isImg) { setUploadErr('Selecione uma imagem (JPG, PNG ou WEBP).'); return; }
+    if (contentType === 'video' && !isVid) { setUploadErr('Selecione um vídeo (MP4, MOV ou WEBM).'); return; }
+    if (!isImg && !isVid) { setUploadErr('Formato não suportado.'); return; }
+    if (file.size > maxBytes) { setUploadErr(`Arquivo muito grande. Máximo: ${contentType === 'video' ? '250 MB' : '20 MB'}.`); return; }
 
-  const onDrop = useCallback((e) => {
-    e.preventDefault(); setDragging(false);
-    processFile(e.dataTransfer.files[0]);
-  }, [processFile]);
+    setUploading(true);
+    setProgress(0);
+    // Simula progresso visual enquanto o upload ocorre
+    const ticker = setInterval(() => setProgress(p => p < 85 ? p + Math.random() * 12 : p), 300);
+    try {
+      const publicUrl = await uploadMedia(file);
+      const mediaType = isImg ? 'image' : 'video';
+      console.log("MEDIA TYPE:", mediaType);
+      console.log("CALLING onSelect with URL:", publicUrl);
+      clearInterval(ticker);
+      setProgress(100);
+      // onSelect e setUploading no mesmo tick — evita estado intermediário
+      // onde uploading=false mas mediaURL ainda não chegou como prop
+      setTimeout(() => {
+        onSelect(publicUrl, mediaType, file.name, file.size);
+        setUploading(false);
+        setProgress(0);
+      }, 350);
+    } catch (err) {
+      clearInterval(ticker);
+      setUploading(false);
+      setProgress(0);
+      setUploadErr(`Erro no upload: ${err.message}`);
+    }
+  }, [contentType, maxBytes, onSelect]);
 
-  const onDragOver = useCallback((e) => { e.preventDefault(); setDragging(true); }, []);
+  const onDrop      = useCallback((e) => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]); }, [processFile]);
+  const onDragOver  = useCallback((e) => { e.preventDefault(); setDragging(true); }, []);
   const onDragLeave = useCallback(() => setDragging(false), []);
-  const onFileChange = useCallback((e) => processFile(e.target.files[0]), [processFile]);
+  const onFileChange = useCallback((e) => { processFile(e.target.files[0]); e.target.value = ''; }, [processFile]);
+
+  if (uploading) {
+    return (
+      <div style={{border:'2px solid #DFF5E8',borderRadius:12,padding:'24px 16px',background:'#f0fdf4',textAlign:'center'}}>
+        <div style={{marginBottom:10}}>
+          <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid #DFF5E8',borderTopColor:'#1E8549',animation:'spin 0.8s linear infinite',margin:'0 auto'}} />
+        </div>
+        <p style={{fontSize:13,fontWeight:600,color:'#1E8549',margin:'0 0 8px'}}>Enviando arquivo…</p>
+        <div style={{background:'#DFF5E8',borderRadius:99,height:6,overflow:'hidden'}}>
+          <div style={{background:'#1E8549',height:'100%',borderRadius:99,width:`${progress}%`,transition:'width 0.3s ease'}} />
+        </div>
+        <p style={{fontSize:11,color:'#6b7280',marginTop:6}}>{Math.round(progress)}%</p>
+      </div>
+    );
+  }
 
   if (mediaURL) {
     return (
       <div style={{position:'relative',borderRadius:12,overflow:'hidden',background:'#f3f4f6'}}>
-        {mediaType === 'video'
+        {contentType === 'video'
           ? <video src={mediaURL} className="media-preview-video" controls preload="metadata" />
           : <img src={mediaURL} className="media-preview-img" alt="preview" onError={e=>{e.target.style.display='none'}} />
         }
         <div style={{position:'absolute',top:8,right:8,display:'flex',gap:6}}>
           <button
-            onClick={()=>fileRef.current?.click()}
+            type="button"
+            onClick={()=>{ setUploadErr(''); fileRef.current?.click(); }}
             style={{background:'rgba(255,255,255,0.92)',border:'1px solid #e5e7eb',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#374151',cursor:'pointer'}}
           >Trocar</button>
           <button
+            type="button"
             onClick={onRemove}
             style={{background:'rgba(239,68,68,0.9)',border:'none',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#fff',cursor:'pointer'}}
           >Remover</button>
         </div>
-        <input ref={fileRef} type="file" accept={ACCEPTED} style={{display:'none'}} onChange={onFileChange} />
+        <input ref={fileRef} type="file" accept={acceptStr} style={{display:'none'}} onChange={onFileChange} />
       </div>
     );
   }
 
   return (
-    <div
-      className={`upload-zone${dragging?' drag-over':''}`}
-      onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
-      onClick={()=>fileRef.current?.click()}
-    >
-      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
-        <div style={{width:44,height:44,borderRadius:12,background:'#DFF5E8',display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <Ic n="upload" size={22} color="#1E8549" />
+    <div>
+      <div
+        className={`upload-zone${dragging?' drag-over':''}`}
+        onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
+        onClick={()=>{ setUploadErr(''); fileRef.current?.click(); }}
+      >
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+          <div style={{width:44,height:44,borderRadius:12,background:'#DFF5E8',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Ic n={contentType === 'video' ? 'video' : 'image'} size={22} color="#1E8549" />
+          </div>
+          <div>
+            <p style={{fontSize:13,fontWeight:600,color:'#374151',margin:0}}>{uploadLabel}</p>
+            <p style={{fontSize:11,color:'#9ca3af',marginTop:4}}>{helpText}</p>
+          </div>
         </div>
-        <div>
-          <p style={{fontSize:13,fontWeight:600,color:'#374151',margin:0}}>Clique para selecionar ou arraste o arquivo aqui</p>
-          <p style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Imagens: JPG, PNG, WEBP · Vídeos: MP4, MOV, WEBM</p>
-        </div>
+        <input ref={fileRef} type="file" accept={acceptStr} style={{display:'none'}} onChange={onFileChange} />
       </div>
-      <input ref={fileRef} type="file" accept={ACCEPTED} style={{display:'none'}} onChange={onFileChange} />
+      {uploadErr && (
+        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8,padding:'8px 12px',borderRadius:10,background:'#fef2f2',border:'1px solid #fecaca'}}>
+          <Ic n="alert" size={14} color="#ef4444" />
+          <span style={{fontSize:12,color:'#dc2626',fontWeight:500}}>{uploadErr}</span>
+        </div>
+      )}
+    </div>
+  );
+});
+
+// ─── CoverUpload — upload de capa para Artigo/Newsletter ─────────────────────
+const CoverUpload = memo(({ coverUrl, onSelect, onRemove }) => {
+  const fileRef  = useRef(null);
+  const [dragging,  setDragging]  = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress,  setProgress]  = useState(0);
+  const [uploadErr, setUploadErr] = useState('');
+
+  const processFile = useCallback(async (file) => {
+    if (!file) return;
+    setUploadErr('');
+    if (!file.type.startsWith('image/')) { setUploadErr('Selecione uma imagem (JPG, PNG ou WEBP).'); return; }
+    if (file.size > 20 * 1024 * 1024) { setUploadErr('Imagem muito grande. Máximo: 20 MB.'); return; }
+    setUploading(true); setProgress(0);
+    const ticker = setInterval(() => setProgress(p => p < 85 ? p + Math.random() * 14 : p), 280);
+    try {
+      const url = await uploadMedia(file);
+      clearInterval(ticker); setProgress(100);
+      setTimeout(() => { setUploading(false); setProgress(0); }, 400);
+      onSelect(url, file.name, file.size);
+    } catch (err) {
+      clearInterval(ticker); setUploading(false); setProgress(0);
+      setUploadErr(`Erro no upload: ${err.message}`);
+    }
+  }, [onSelect]);
+
+  const onDrop      = useCallback((e) => { e.preventDefault(); setDragging(false); processFile(e.dataTransfer.files[0]); }, [processFile]);
+  const onDragOver  = useCallback((e) => { e.preventDefault(); setDragging(true); }, []);
+  const onDragLeave = useCallback(() => setDragging(false), []);
+  const onFileChange = useCallback((e) => { processFile(e.target.files[0]); e.target.value = ''; }, [processFile]);
+
+  if (uploading) return (
+    <div style={{border:'2px solid #DFF5E8',borderRadius:12,padding:'20px 16px',background:'#f0fdf4',textAlign:'center'}}>
+      <div style={{width:32,height:32,borderRadius:'50%',border:'3px solid #DFF5E8',borderTopColor:'#1E8549',animation:'spin 0.8s linear infinite',margin:'0 auto 8px'}} />
+      <p style={{fontSize:12,fontWeight:600,color:'#1E8549',margin:'0 0 6px'}}>Enviando capa…</p>
+      <div style={{background:'#DFF5E8',borderRadius:99,height:5,overflow:'hidden'}}>
+        <div style={{background:'#1E8549',height:'100%',borderRadius:99,width:`${progress}%`,transition:'width 0.3s ease'}} />
+      </div>
+    </div>
+  );
+
+  if (coverUrl) return (
+    <div style={{position:'relative',borderRadius:12,overflow:'hidden',background:'#f3f4f6'}}>
+      <img src={coverUrl} alt="capa" style={{width:'100%',maxHeight:180,objectFit:'cover',display:'block'}} onError={e=>{e.target.style.display='none'}} />
+      <div style={{position:'absolute',top:8,right:8,display:'flex',gap:6}}>
+        <button type="button" onClick={()=>{ setUploadErr(''); fileRef.current?.click(); }}
+          style={{background:'rgba(255,255,255,0.92)',border:'1px solid #e5e7eb',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#374151',cursor:'pointer'}}>Trocar</button>
+        <button type="button" onClick={onRemove}
+          style={{background:'rgba(239,68,68,0.9)',border:'none',borderRadius:8,padding:'4px 10px',fontSize:11,fontWeight:600,color:'#fff',cursor:'pointer'}}>Remover</button>
+      </div>
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={onFileChange} />
+    </div>
+  );
+
+  return (
+    <div>
+      <div className={`upload-zone${dragging?' drag-over':''}`}
+        onDrop={onDrop} onDragOver={onDragOver} onDragLeave={onDragLeave}
+        onClick={()=>{ setUploadErr(''); fileRef.current?.click(); }}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10}}>
+          <div style={{width:40,height:40,borderRadius:12,background:'#DFF5E8',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Ic n="image" size={20} color="#1E8549" />
+          </div>
+          <div>
+            <p style={{fontSize:13,fontWeight:600,color:'#374151',margin:0}}>Clique para selecionar a capa ou arraste aqui</p>
+            <p style={{fontSize:11,color:'#9ca3af',marginTop:4}}>JPG, PNG ou WEBP — máx. 20 MB</p>
+          </div>
+        </div>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={onFileChange} />
+      </div>
+      {uploadErr && (
+        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8,padding:'8px 12px',borderRadius:10,background:'#fef2f2',border:'1px solid #fecaca'}}>
+          <Ic n="alert" size={14} color="#ef4444" />
+          <span style={{fontSize:12,color:'#dc2626',fontWeight:500}}>{uploadErr}</span>
+        </div>
+      )}
     </div>
   );
 });
@@ -538,12 +981,12 @@ const MediaUpload = memo(({ mediaURL, mediaType, onSelect, onRemove }) => {
 // PERFORMANCE: campos de texto usam refs (uncontrolled) → zero re-renders ao digitar.
 // Apenas o estado "meta" (selects, datas, tags, mídia) usa useState.
 const EMPTY_META = {
-  formato:'Post Estático', status:'Rascunho', prioridade:'Média',
+  formato:'Post', status:'Rascunho', prioridade:'Média',
   objetivo:'Employer Branding', engajamento:'Médio', dataPublicacao:'',
-  tags:[], mediaURL:'', mediaType:'image',
+  tags:[], mediaURL:'', mediaType:'image', fileName:'', fileSize:0,
 };
 
-const PostModal = ({ post, onClose, onSave }) => {
+const PostModal = ({ post, onClose, onSave, currentUser }) => {
   // Estado para campos NÃO-TEXTO (selects, date, tags, mídia) — re-renders OK aqui
   const [meta, setMeta] = useState(() => post ? {
     formato: post.formato || EMPTY_META.formato,
@@ -555,23 +998,47 @@ const PostModal = ({ post, onClose, onSave }) => {
     tags: post.tags || [],
     mediaURL: post.mediaURL || '',
     mediaType: post.mediaType || 'image',
+    fileName: post.fileName || '',
+    fileSize: post.fileSize || 0,
   } : {...EMPTY_META});
 
   // Refs para campos de TEXTO — sem re-renders ao digitar
-  const tituloRef = useRef(null);
-  const legendaRef = useRef(null);
-  const ctaRef = useRef(null);
-  const obsRef = useRef(null);
+  const tituloRef             = useRef(null);
+  const legendaRef            = useRef(null);
+  const ctaRef                = useRef(null);
+  const obsRef                = useRef(null);
+  const textContentRef        = useRef(null);
+  const contentTitleRef       = useRef(null);
+  const contentDescriptionRef = useRef(null);
+  const fullTextRef           = useRef(null);
+  const newsletterNameRef     = useRef(null);
+
+  // Estado da capa (Artigo / Newsletter) — re-render OK pois não é digitação
+  const [coverMeta, setCoverMeta] = useState({
+    coverUrl: post?.coverUrl || '',
+    coverFileName: post?.coverFileName || '',
+    coverFileSize: post?.coverFileSize || 0,
+  });
+  const onCoverSelect = useCallback((url, name, size) => setCoverMeta({ coverUrl: url, coverFileName: name, coverFileSize: size }), []);
+  const onCoverRemove = useCallback(() => setCoverMeta({ coverUrl: '', coverFileName: '', coverFileSize: 0 }), []);
 
   const [tagInput, setTagInput] = useState('');
 
   const setM = useCallback((k, v) => setMeta(m => ({...m, [k]: v})), []);
 
-  const onMediaSelect = useCallback((url, type) => setMeta(m => ({...m, mediaURL:url, mediaType:type})), []);
+  const onMediaSelect = useCallback((url, type, fileName, fileSize) => {
+    setMeta(m => ({...m, mediaURL: url, mediaType: type, fileName: fileName || '', fileSize: fileSize || 0}));
+  }, []);
+
+  // Remove só a mídia, mantém o tipo de conteúdo escolhido
   const onMediaRemove = useCallback(() => {
-    if (meta.mediaURL.startsWith('blob:')) URL.revokeObjectURL(meta.mediaURL);
-    setMeta(m => ({...m, mediaURL:'', mediaType:'image'}));
-  }, [meta.mediaURL]);
+    setMeta(m => ({...m, mediaURL: '', fileName: '', fileSize: 0}));
+  }, []);
+
+  // Ao trocar o tipo de conteúdo, limpa mídia existente (tipo incompatível)
+  const handleContentType = useCallback((type) => {
+    setMeta(m => ({...m, mediaType: type, mediaURL: '', fileName: '', fileSize: 0}));
+  }, []);
 
   const addTag = useCallback(() => {
     const t = tagInput.trim().replace(/^#*/, '#');
@@ -584,21 +1051,36 @@ const PostModal = ({ post, onClose, onSave }) => {
   const save = useCallback(() => {
     const titulo = tituloRef.current?.value?.trim() || '';
     if (!titulo) { alert('Preencha o título interno.'); tituloRef.current?.focus(); return; }
-    const ts = nowStr();
+    const isArticle    = meta.formato === 'Artigo';
+    const isNewsletter = meta.formato === 'Newsletter';
     const built = {
       titulo,
-      legenda: legendaRef.current?.value || '',
-      linkCTA: ctaRef.current?.value || '',
-      observacoes: obsRef.current?.value || '',
+      legenda:     legendaRef.current?.value || '',
+      linkCTA:     ctaRef.current?.value     || '',
+      observacoes: obsRef.current?.value     || '',
+      textContent: meta.formato === 'Post' ? (textContentRef.current?.value || '') : '',
+      ...(isArticle ? {
+        contentTitle:       contentTitleRef.current?.value       || '',
+        contentDescription: contentDescriptionRef.current?.value || '',
+        fullText:           fullTextRef.current?.value           || '',
+        ...coverMeta,
+      } : {}),
+      ...(isNewsletter ? {
+        newsletterName:     newsletterNameRef.current?.value     || '',
+        contentTitle:       contentTitleRef.current?.value       || '',
+        contentDescription: contentDescriptionRef.current?.value || '',
+        ...coverMeta,
+      } : {}),
       ...meta,
     };
-    if (post?.id) {
-      onSave({...post, ...built, historico:[...(post.historico||[]),{acao:'Post editado',timestamp:ts}]});
-    } else {
-      onSave({...built, id:Date.now(), comments:[], feedbackLideranca:[], historico:[{acao:'Post criado',timestamp:ts}]});
-    }
+    const autor = currentUser || '—';
+    const finalPost = post?.id
+      ? {...post, ...built, historico:[...(post.historico||[]), makeHistEntry(`${autor} editou o post`, autor)]}
+      : {...built, id:Date.now(), comments:[], feedbackLideranca:[], historico:[makeHistEntry(`${autor} criou o post`, autor)]};
+
+    onSave(finalPost);
     onClose();
-  }, [meta, post, onSave, onClose]);
+  }, [meta, coverMeta, post, onSave, onClose, currentUser]);
 
   useEffect(() => {
     document.body.classList.add('modal-open');
@@ -622,45 +1104,54 @@ const PostModal = ({ post, onClose, onSave }) => {
 
         <div className="overflow-y-auto scrollbar-hide p-6 flex flex-col gap-4 flex-1">
 
-          {/* TEXTO — inputs não-controlados com defaultValue + ref */}
+          {/* TÍTULO */}
           <ModalField label="Título interno *">
             <input ref={tituloRef} className={ic} defaultValue={post?.titulo||''} placeholder="Ex: Post de cultura — maio 2026" style={{color:'#111'}} />
           </ModalField>
 
-          <ModalField label="Texto da legenda">
-            <textarea ref={legendaRef} className={ic} rows={6} defaultValue={post?.legenda||''} placeholder="Escreva o texto completo que será publicado no LinkedIn..." style={{color:'#111',resize:'vertical'}} />
+          {/* TIPO DE CONTEÚDO */}
+          <ModalField label="Tipo de conteúdo">
+            <div style={{display:'flex',gap:4,background:'#f3f4f6',padding:4,borderRadius:12}}>
+              {[
+                {val:'Post',       icon:'msg',  lbl:'Post'},
+                {val:'Artigo',     icon:'file', lbl:'Artigo'},
+                {val:'Newsletter', icon:'send', lbl:'Newsletter'},
+              ].map(({val, icon, lbl}) => (
+                <button key={val} type="button"
+                  onClick={()=>setM('formato', val)}
+                  className={`view-btn flex-1 ${meta.formato===val?'active':''}`}
+                  style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                  <Ic n={icon} size={13} color={meta.formato===val?'#fff':'#6b7280'} />
+                  {lbl}
+                </button>
+              ))}
+            </div>
           </ModalField>
 
-          {/* SELECTS — controlados (não há digitação, re-render é OK) */}
+          {/* LEGENDA */}
+          <ModalField label="Texto da legenda">
+            <textarea ref={legendaRef} className={ic} rows={5} defaultValue={post?.legenda||''} placeholder="Texto que acompanha o post no LinkedIn..." style={{color:'#111',resize:'vertical'}} />
+          </ModalField>
+
+          {/* SELECTS */}
           <div className="grid grid-cols-2 gap-4">
-            <ModalField label="Formato">
-              <select className={ic} value={meta.formato} onChange={e=>setM('formato',e.target.value)} style={{color:'#111'}}>
-                {FORMATOS.map(f=><option key={f}>{f}</option>)}
-              </select>
-            </ModalField>
             <ModalField label="Status">
               <select className={ic} value={meta.status} onChange={e=>setM('status',e.target.value)} style={{color:'#111'}}>
                 {STATUS_KEYS.map(s=><option key={s}>{s}</option>)}
               </select>
             </ModalField>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <ModalField label="Prioridade">
               <select className={ic} value={meta.prioridade} onChange={e=>setM('prioridade',e.target.value)} style={{color:'#111'}}>
                 {['Alta','Média','Baixa'].map(p=><option key={p}>{p}</option>)}
               </select>
             </ModalField>
-            <ModalField label="Objetivo do post">
-              <select className={ic} value={meta.objetivo} onChange={e=>setM('objetivo',e.target.value)} style={{color:'#111'}}>
-                {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
-              </select>
-            </ModalField>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <ModalField label="Data prevista de publicação">
-              <input type="date" className={ic} value={meta.dataPublicacao} onChange={e=>setM('dataPublicacao',e.target.value)} style={{color:'#111'}} />
+            <ModalField label="Objetivo">
+              <select className={ic} value={meta.objetivo} onChange={e=>setM('objetivo',e.target.value)} style={{color:'#111'}}>
+                {OBJETIVOS.map(o=><option key={o}>{o}</option>)}
+              </select>
             </ModalField>
             <ModalField label="Potencial de engajamento">
               <select className={ic} value={meta.engajamento} onChange={e=>setM('engajamento',e.target.value)} style={{color:'#111'}}>
@@ -669,10 +1160,119 @@ const PostModal = ({ post, onClose, onSave }) => {
             </ModalField>
           </div>
 
-          {/* MÍDIA — upload local */}
-          <ModalField label="Mídia do post">
-            <MediaUpload mediaURL={meta.mediaURL} mediaType={meta.mediaType} onSelect={onMediaSelect} onRemove={onMediaRemove} />
+          <ModalField label="Data prevista de publicação">
+            <input type="date" className={ic} value={meta.dataPublicacao} onChange={e=>setM('dataPublicacao',e.target.value)} style={{color:'#111',maxWidth:220}} />
           </ModalField>
+
+          {/* ── POST: seletor de mídia ─────────────────────────────────────── */}
+          {meta.formato === 'Post' && (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <label style={{fontSize:13,fontWeight:600,color:'#374151'}}>Mídia do post</label>
+              <div style={{display:'flex',gap:4,background:'#f3f4f6',padding:4,borderRadius:12}}>
+                {[
+                  {val:'text',  icon:'file',  lbl:'Texto'},
+                  {val:'image', icon:'image', lbl:'Imagem'},
+                  {val:'video', icon:'video', lbl:'Vídeo'},
+                ].map(({val, icon, lbl}) => (
+                  <button key={val} type="button"
+                    onClick={()=>handleContentType(val)}
+                    className={`view-btn flex-1 ${meta.mediaType===val?'active':''}`}
+                    style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                    <Ic n={icon} size={13} color={meta.mediaType===val?'#fff':'#6b7280'} />
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+              {meta.mediaType === 'text' ? (
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  <textarea ref={textContentRef} defaultValue={post?.textContent||''}
+                    placeholder="Corpo do post textual…" rows={7}
+                    style={{border:'1px solid #e5e7eb',borderRadius:12,padding:'12px 14px',fontSize:13,color:'#111',background:'#fff',resize:'vertical',lineHeight:1.6,outline:'none',width:'100%',fontFamily:'inherit'}}
+                    onFocus={e=>e.target.style.borderColor='#1E8549'}
+                    onBlur={e=>e.target.style.borderColor='#e5e7eb'} />
+                </div>
+              ) : (
+                <MediaUpload mediaURL={meta.mediaURL} contentType={meta.mediaType} onSelect={onMediaSelect} onRemove={onMediaRemove} />
+              )}
+            </div>
+          )}
+
+          {/* ── ARTIGO ────────────────────────────────────────────────────── */}
+          {meta.formato === 'Artigo' && (
+            <div style={{display:'flex',flexDirection:'column',gap:12,padding:16,borderRadius:16,border:'1px solid #DFF5E8',background:'#f0fdf4'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:28,height:28,borderRadius:8,background:'#0d9488',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic n="file" size={14} color="#fff" />
+                </div>
+                <div>
+                  <p style={{margin:0,fontSize:13,fontWeight:700,color:'#0F3D2E'}}>Conteúdo do Artigo</p>
+                  <p style={{margin:0,fontSize:11,color:'#6b7280'}}>Campos para aprovação pela liderança</p>
+                </div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Imagem de capa</label>
+                <CoverUpload coverUrl={coverMeta.coverUrl} onSelect={onCoverSelect} onRemove={onCoverRemove} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Título do artigo</label>
+                <input ref={contentTitleRef} defaultValue={post?.contentTitle||''} placeholder="Ex: O futuro do RH orientado a dados"
+                  style={{border:'1px solid #e5e7eb',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#1E8549'} onBlur={e=>e.target.style.borderColor='#e5e7eb'} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Descrição / resumo</label>
+                <textarea ref={contentDescriptionRef} defaultValue={post?.contentDescription||''} rows={3}
+                  placeholder="Resumo ou subtítulo do artigo..."
+                  style={{border:'1px solid #e5e7eb',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',resize:'vertical',lineHeight:1.6,outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#1E8549'} onBlur={e=>e.target.style.borderColor='#e5e7eb'} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Texto completo</label>
+                <textarea ref={fullTextRef} defaultValue={post?.fullText||''} rows={10}
+                  placeholder="Cole o conteúdo completo do artigo para aprovação..."
+                  style={{border:'1px solid #e5e7eb',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',resize:'vertical',lineHeight:1.7,outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#1E8549'} onBlur={e=>e.target.style.borderColor='#e5e7eb'} />
+              </div>
+            </div>
+          )}
+
+          {/* ── NEWSLETTER ────────────────────────────────────────────────── */}
+          {meta.formato === 'Newsletter' && (
+            <div style={{display:'flex',flexDirection:'column',gap:12,padding:16,borderRadius:16,border:'1px solid #e9d5ff',background:'#fdf4ff'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:28,height:28,borderRadius:8,background:'#9333ea',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Ic n="send" size={14} color="#fff" />
+                </div>
+                <div>
+                  <p style={{margin:0,fontSize:13,fontWeight:700,color:'#581c87'}}>Conteúdo da Newsletter</p>
+                  <p style={{margin:0,fontSize:11,color:'#6b7280'}}>Campos para aprovação pela liderança</p>
+                </div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Nome da newsletter</label>
+                <input ref={newsletterNameRef} defaultValue={post?.newsletterName||''} placeholder="Ex: allu Insights · People &amp; Tech"
+                  style={{border:'1px solid #e9d5ff',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#9333ea'} onBlur={e=>e.target.style.borderColor='#e9d5ff'} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Imagem de capa</label>
+                <CoverUpload coverUrl={coverMeta.coverUrl} onSelect={onCoverSelect} onRemove={onCoverRemove} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Título da edição</label>
+                <input ref={contentTitleRef} defaultValue={post?.contentTitle||''} placeholder="Ex: Como construir marca empregadora em 2026"
+                  style={{border:'1px solid #e9d5ff',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#9333ea'} onBlur={e=>e.target.style.borderColor='#e9d5ff'} />
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                <label style={{fontSize:11,fontWeight:600,color:'#374151',textTransform:'uppercase',letterSpacing:'0.06em'}}>Descrição da edição</label>
+                <textarea ref={contentDescriptionRef} defaultValue={post?.contentDescription||''} rows={3}
+                  placeholder="Resumo do que o leitor vai encontrar nessa edição..."
+                  style={{border:'1px solid #e9d5ff',borderRadius:10,padding:'10px 12px',fontSize:13,color:'#111',background:'#fff',resize:'vertical',lineHeight:1.6,outline:'none',width:'100%',fontFamily:'inherit'}}
+                  onFocus={e=>e.target.style.borderColor='#9333ea'} onBlur={e=>e.target.style.borderColor='#e9d5ff'} />
+              </div>
+            </div>
+          )}
 
           {/* TAGS */}
           <ModalField label="Tags">
@@ -729,28 +1329,24 @@ const ConfirmModal = ({ message, onConfirm, onClose, danger=false }) => (
 );
 
 // ─── Comments Section ─────────────────────────────────────────────────────────
-const CommentsSection = ({ post, onAddComment, onAddLeadFeedback }) => {
-  const [text, setText] = useState('');
-  const [autor, setAutor] = useState('');
+const CommentsSection = ({ post, onAddComment, onAddLeadFeedback, currentUser }) => {
+  const [text,     setText]     = useState('');
   const [leadText, setLeadText] = useState('');
-  const [leadAutor, setLeadAutor] = useState('');
-  const [tab, setTab] = useState('comments');
+  const [tab,      setTab]      = useState('comments');
 
   const sendComment = () => {
     if (!text.trim()) return;
-    onAddComment(post.id, { id: Date.now(), autor: autor.trim()||'Anônimo', texto: text.trim(), timestamp: nowStr() });
+    onAddComment(post.id, { id: Date.now(), autor: currentUser || 'Anônimo', texto: text.trim(), timestamp: nowStr(), iso_timestamp: nowISO() });
     setText('');
   };
-
   const sendLead = () => {
     if (!leadText.trim()) return;
-    onAddLeadFeedback(post.id, { id: Date.now(), autor: leadAutor.trim()||'Liderança', texto: leadText.trim(), timestamp: nowStr() });
+    onAddLeadFeedback(post.id, { id: Date.now(), autor: currentUser || 'Liderança', texto: leadText.trim(), timestamp: nowStr(), iso_timestamp: nowISO() });
     setLeadText('');
   };
 
   return (
     <div className="border-t border-gray-100 pt-3 mt-3 fade-in">
-      {/* Tab switcher */}
       <div className="flex gap-1 mb-3 bg-gray-100 rounded-xl p-1 w-fit">
         <button onClick={()=>setTab('comments')} className={`view-btn flex items-center gap-1.5 ${tab==='comments'?'active':''}`}>
           <Ic n="msg" size={12} color={tab==='comments'?'#fff':'#6b7280'} />
@@ -768,20 +1364,21 @@ const CommentsSection = ({ post, onAddComment, onAddLeadFeedback }) => {
           <div className="space-y-2 mb-3">
             {post.comments.map(c=>(
               <div key={c.id} className="rounded-xl p-3" style={{background:'#F5F5F5'}}>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:'#1E8549',fontSize:9}}>
+                    {(c.autor||'?')[0].toUpperCase()}
+                  </div>
                   <span className="text-xs font-semibold" style={{color:'#0F3D2E'}}>{c.autor}</span>
-                  <span className="text-xs text-gray-400">{c.timestamp}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{c.iso_timestamp ? fmtISO(c.iso_timestamp) : c.timestamp}</span>
                 </div>
                 <p className="text-xs text-gray-700 leading-relaxed">{c.texto}</p>
               </div>
             ))}
           </div>
+          {currentUser && <div className="text-xs text-gray-400 mb-1.5 flex items-center gap-1.5"><div className="w-4 h-4 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0" style={{background:'#1E8549',fontSize:8}}>{currentUser[0].toUpperCase()}</div> Comentando como <strong style={{color:'#0F3D2E'}}>{currentUser}</strong></div>}
           <div className="flex gap-2">
-            <input className="border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" style={{maxWidth:110,minWidth:90}} placeholder="Seu nome" value={autor} onChange={e=>setAutor(e.target.value)} />
-            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Adicionar comentário..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendComment()} />
-            <button onClick={sendComment} className="px-3 py-2 rounded-lg text-white flex-shrink-0 btn" style={{background:'#1E8549'}}>
-              <Ic n="send" size={12} color="#fff" />
-            </button>
+            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Adicionar comentário..." value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendComment()} style={{color:'#111'}} />
+            <button onClick={sendComment} className="px-3 py-2 rounded-lg text-white flex-shrink-0 btn" style={{background:'#1E8549'}}><Ic n="send" size={12} color="#fff" /></button>
           </div>
         </>
       )}
@@ -792,21 +1389,19 @@ const CommentsSection = ({ post, onAddComment, onAddLeadFeedback }) => {
           <div className="space-y-2 mb-3">
             {post.feedbackLideranca.map(c=>(
               <div key={c.id} className="rounded-xl p-3 border" style={{background:'#FFFBEB',borderColor:'#fde68a'}}>
-                <div className="flex items-center gap-1.5 mb-1">
+                <div className="flex items-center gap-2 mb-1.5">
                   <Ic n="crown" size={11} color="#ca8a04" />
                   <span className="text-xs font-semibold" style={{color:'#92400e'}}>{c.autor}</span>
-                  <span className="text-xs text-gray-400 ml-auto">{c.timestamp}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{c.iso_timestamp ? fmtISO(c.iso_timestamp) : c.timestamp}</span>
                 </div>
                 <p className="text-xs leading-relaxed" style={{color:'#78350f'}}>{c.texto}</p>
               </div>
             ))}
           </div>
+          {currentUser && <div className="text-xs text-gray-400 mb-1.5 flex items-center gap-1.5"><Ic n="crown" size={11} color="#ca8a04" /> Feedback como <strong style={{color:'#92400e'}}>{currentUser}</strong></div>}
           <div className="flex gap-2">
-            <input className="border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" style={{maxWidth:130,minWidth:100}} placeholder="Ex: Head de People" value={leadAutor} onChange={e=>setLeadAutor(e.target.value)} />
-            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Feedback da liderança..." value={leadText} onChange={e=>setLeadText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendLead()} />
-            <button onClick={sendLead} className="px-3 py-2 rounded-lg flex-shrink-0 btn text-white" style={{background:'#ca8a04'}}>
-              <Ic n="send" size={12} color="#fff" />
-            </button>
+            <input className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs bg-white" placeholder="Feedback da liderança..." value={leadText} onChange={e=>setLeadText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendLead()} style={{color:'#111'}} />
+            <button onClick={sendLead} className="px-3 py-2 rounded-lg flex-shrink-0 btn text-white" style={{background:'#ca8a04'}}><Ic n="send" size={12} color="#fff" /></button>
           </div>
         </>
       )}
@@ -815,30 +1410,45 @@ const CommentsSection = ({ post, onAddComment, onAddLeadFeedback }) => {
 };
 
 // ─── History Section ──────────────────────────────────────────────────────────
-const HistorySection = ({ historico }) => (
-  <div className="border-t border-gray-100 pt-3 mt-3 fade-in">
-    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-      <Ic n="history" size={12} /> Histórico
-    </p>
-    <div className="space-y-2">
-      {(historico||[]).map((h, i) => (
-        <div key={i} className="flex items-start gap-2.5">
-          <div className="flex flex-col items-center gap-0.5 flex-shrink-0 mt-0.5">
-            <div className="w-2 h-2 rounded-full" style={{background:'#1E8549'}} />
-            {i < (historico.length-1) && <div className="w-px flex-1 bg-gray-200" style={{height:14}} />}
-          </div>
-          <div className="pb-1">
-            <p className="text-xs text-gray-700 font-medium">{h.acao}</p>
-            <p className="text-xs text-gray-400">{h.timestamp}</p>
-          </div>
-        </div>
-      ))}
+const HistorySection = ({ historico }) => {
+  const sorted = [...(historico||[])].reverse();
+  return (
+    <div className="border-t border-gray-100 pt-3 mt-3 fade-in">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <Ic n="history" size={12} /> Histórico
+      </p>
+      {sorted.length === 0 && <p className="text-xs text-gray-400 italic">Nenhum registro ainda.</p>}
+      <div className="space-y-3">
+        {sorted.map((h, i) => {
+          const name    = h.autor || '—';
+          const initial = name[0]?.toUpperCase() || '?';
+          const ts      = h.iso_timestamp ? fmtISO(h.iso_timestamp) : (h.timestamp || '');
+          const hasDiff = h.de !== undefined || h.para !== undefined;
+          return (
+            <div key={i} className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 mt-0.5" style={{background:'#1E8549',fontSize:10}}>
+                {initial}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-700 font-medium leading-snug">{h.acao}</p>
+                {ts && <p className="text-xs text-gray-400 mt-0.5">{ts}</p>}
+                {hasDiff && (
+                  <div className="mt-1.5 space-y-1">
+                    {h.de  !== undefined && <div className="text-xs rounded-lg px-2 py-1.5 leading-relaxed" style={{background:'#fef2f2',color:'#991b1b'}}>De: <em>"{String(h.de).slice(0,120)}{String(h.de).length>120?'…':''}"</em></div>}
+                    {h.para !== undefined && <div className="text-xs rounded-lg px-2 py-1.5 leading-relaxed" style={{background:'#f0fdf4',color:'#166534'}}>Para: <em>"{String(h.para).slice(0,120)}{String(h.para).length>120?'…':''}"</em></div>}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
-const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment, onAddLeadFeedback, activeTag, onTagClick }) => {
+const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddComment, onAddLeadFeedback, activeTag, onTagClick, currentUser }) => {
   const [openSection, setOpenSection] = useState(null);
   const toggle = (s) => setOpenSection(v => v === s ? null : s);
   const sc = STATUS_CONFIG[post.status] || STATUS_CONFIG['Rascunho'];
@@ -859,31 +1469,60 @@ const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddCo
               <StatusBadge status={post.status} />
             </div>
           </div>
-          {post.mediaURL && (
+          {(post.formato === 'Artigo' || post.formato === 'Newsletter') ? (
+            <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{background:'#0F3D2E',position:'relative'}}>
+              {(post.coverUrl || post.mediaURL) ? (
+                <img
+                  src={post.coverUrl || post.mediaURL}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={e=>{e.target.style.display='none'}}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center"><Ic n="file" size={20} color="rgba(255,255,255,0.7)" /></div>
+              )}
+            </div>
+          ) : post.mediaURL ? (
             <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative" style={{background:'#f3f4f6'}}>
               {post.mediaType === 'video'
                 ? <div className="w-full h-full flex items-center justify-center" style={{background:'#1f2937'}}>
                     <Ic n="play-circle" size={26} color="#fff" />
                   </div>
-                : <img src={post.mediaURL} alt="" className="w-full h-full object-cover" onError={e=>{e.target.parentElement.style.display='none'}} />
+                : <img src={post.mediaURL} alt="" className="w-full h-full object-cover" onError={e=>{e.target.style.opacity='0.3'; console.warn("PostCard img failed:", post.mediaURL);}} />
               }
             </div>
-          )}
+          ) : post.mediaType === 'text' ? (
+            <div className="w-14 h-14 rounded-xl flex-shrink-0 flex flex-col items-center justify-center gap-0.5" style={{background:'#f0fdf4',border:'1px solid #DFF5E8',flexShrink:0}}>
+              <Ic n="file" size={16} color="#1E8549" />
+              <span style={{fontSize:9,color:'#1E8549',fontWeight:700,letterSpacing:'0.02em'}}>TEXTO</span>
+            </div>
+          ) : null}
         </div>
 
         {/* Priority + Engagement row */}
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
           <PriorityBadge priority={post.prioridade} />
           <EngagementBadge engajamento={post.engajamento} />
-          {post.objetivo && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{background:'#F5F5F5',color:'#6b7280',border:'1px solid #e5e7eb'}}>
-              <Ic n="target" size={10} color="#9ca3af" /> {post.objetivo}
-            </span>
-          )}
+          {post.objetivo && <ObjetivoBadge objetivo={post.objetivo} />}
         </div>
 
         {/* Caption preview */}
-        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{post.legenda}</p>
+        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-1">{post.legenda}</p>
+        {(post.formato === 'Artigo' || post.formato === 'Newsletter') && post.contentTitle && (
+          <p className="text-xs font-semibold mb-0.5" style={{color:'#0F3D2E',display:'-webkit-box',WebkitLineClamp:1,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+            {post.contentTitle}
+          </p>
+        )}
+        {(post.formato === 'Artigo' || post.formato === 'Newsletter') && post.contentDescription && (
+          <p className="text-xs leading-relaxed mb-3" style={{color:'#9ca3af',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+            {post.contentDescription}
+          </p>
+        )}
+        {post.mediaType === 'text' && post.textContent && !(post.formato === 'Artigo' || post.formato === 'Newsletter') && (
+          <p className="text-xs leading-relaxed mb-3" style={{color:'#9ca3af',fontStyle:'italic',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
+            {post.textContent.length > 120 ? post.textContent.slice(0, 120) + '…' : post.textContent}
+          </p>
+        )}
 
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
@@ -946,7 +1585,7 @@ const PostCard = memo(({ post, onView, onEdit, onChangeStatus, onDelete, onAddCo
         </div>
 
         {openSection === 'comments' && (
-          <CommentsSection post={post} onAddComment={onAddComment} onAddLeadFeedback={onAddLeadFeedback} />
+          <CommentsSection post={post} onAddComment={onAddComment} onAddLeadFeedback={onAddLeadFeedback} currentUser={currentUser} />
         )}
         {openSection === 'history' && (
           <HistorySection historico={post.historico} />
@@ -1043,25 +1682,57 @@ const CalendarView = memo(({ posts }) => {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 const App = () => {
-  const [posts, setPosts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('allu-linkedin-posts');
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return INITIAL_POSTS;
-  });
-  const [viewPost, setViewPost] = useState(null);
-  const [editPost, setEditPost] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [confirm, setConfirm] = useState(null);
-  const [viewMode, setViewMode] = useState('list');
-  const [activeTag, setActiveTag] = useState('');
-  const [filters, setFilters] = useState({ status:'', formato:'', objetivo:'', data:'' });
+  const [posts, setPosts]           = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [dbError, setDbError]       = useState('');
+  const [viewPostId, setViewPostId] = useState(null);
+  const [editPost, setEditPost]     = useState(null);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [confirm, setConfirm]       = useState(null);
+  const [viewMode, setViewMode]     = useState('list');
+  const [activeTag, setActiveTag]   = useState('');
+  const [filters, setFilters]       = useState({ status:'', formato:'', objetivo:'', data:'' });
   const [savedNotice, setSavedNotice] = useState(null);
 
-  useEffect(() => {
-    try { localStorage.setItem('allu-linkedin-posts', JSON.stringify(posts)); } catch {}
-  }, [posts]);
+  // ── Usuário identificado ──────────────────────────────────────────────────
+  const [currentUser, setCurrentUser] = useState(() => {
+    const u = localStorage.getItem('allu_user') || '';
+    console.log('[allu] currentUser on init:', u || '(vazio)');
+    return u;
+  });
+  const [showUserModal, setShowUserModal] = useState(() => {
+    const hasUser = !!localStorage.getItem('allu_user');
+    console.log('[allu] showUserModal:', !hasUser);
+    return !hasUser;
+  });
+  const handleUserName = useCallback((name) => {
+    console.log('[allu] handleUserName:', name);
+    localStorage.setItem('allu_user', name);
+    setCurrentUser(name);
+    setShowUserModal(false);
+  }, []);
+
+  // viewPost derived — sempre em sincronia com o array posts
+  const viewPost = useMemo(() => viewPostId ? (posts.find(p => p.id === viewPostId) || null) : null, [viewPostId, posts]);
+
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true);
+    setDbError('');
+    const { data, error } = await supabaseClient
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Erro ao carregar posts:', error);
+      setDbError(error.message);
+      setPostsLoading(false);
+      return;
+    }
+    setPosts((data || []).map(dbToPost));
+    setPostsLoading(false);
+  }, []);
+
+  useEffect(() => { loadPosts(); }, [loadPosts]);
 
   // KPIs
   const kpis = useMemo(() => ({
@@ -1088,33 +1759,104 @@ const App = () => {
   const clearFilters = useCallback(() => { setFilters({status:'',formato:'',objetivo:'',data:''}); setActiveTag(''); }, []);
   const hasFilters = Object.values(filters).some(v=>v) || !!activeTag;
 
-  const savePost = useCallback((form) => {
-    setPosts(ps => {
-      const exists = ps.some(p => p.id === form.id);
-      if (exists) return ps.map(p => p.id === form.id ? {...form} : p);
-      return [...ps, form];
-    });
+  const savePost = useCallback(async (form) => {
+    const dbData = postToDb(form);
+    const isUpdate = posts.some(p => p.id === form.id);
+    // Optimistic update
+    setPosts(ps => isUpdate ? ps.map(p => p.id === form.id ? form : p) : [form, ...ps]);
+    const { error } = isUpdate
+      ? await supabaseClient.from('posts').update(dbData).eq('id', form.id)
+      : await supabaseClient.from('posts').insert(dbData);
+    if (error) {
+      console.error('Erro ao salvar post:', error);
+      alert('Erro ao salvar: ' + error.message);
+      loadPosts(); // rollback
+      return;
+    }
     setSavedNotice(form.id);
     setTimeout(() => setSavedNotice(null), 4000);
-  }, []);
+  }, [posts, loadPosts]);
 
-  const changeStatus = useCallback((id, newStatus) => {
-    setPosts(ps => ps.map(p => p.id===id ? {
-      ...p, status: newStatus,
-      historico: [...(p.historico||[]), { acao: `Status alterado para ${newStatus}`, timestamp: nowStr() }]
-    } : p));
-  }, []);
+  const changeStatus = useCallback(async (id, newStatus) => {
+    const post = posts.find(p => p.id === id);
+    const autor = currentUser || '—';
+    const entry = makeHistEntry(`${autor} alterou o status para ${newStatus}`, autor);
+    const newHistorico = [...(post.historico || []), entry];
+    setPosts(ps => ps.map(p => p.id === id ? {...p, status: newStatus, historico: newHistorico} : p));
+    const { error } = await supabaseClient.from('posts')
+      .update({ status: newStatus, historico: newHistorico, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) { console.error('Erro ao atualizar status:', error); loadPosts(); }
+  }, [posts, currentUser, loadPosts]);
 
-  const deletePost = useCallback((id) => setPosts(ps => ps.filter(p => p.id!==id)), []);
+  const deletePost = useCallback(async (id) => {
+    setPosts(ps => ps.filter(p => p.id !== id)); // Optimistic
+    const { error } = await supabaseClient.from('posts').delete().eq('id', id);
+    if (error) { console.error('Erro ao excluir:', error); loadPosts(); }
+  }, [loadPosts]);
 
-  const addComment = useCallback((pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, comments:[...p.comments,c]} : p)), []);
-  const addLead = useCallback((pid, c) => setPosts(ps => ps.map(p => p.id===pid ? {...p, feedbackLideranca:[...(p.feedbackLideranca||[]),c]} : p)), []);
+  const addComment = useCallback(async (pid, c) => {
+    const post = posts.find(p => p.id === pid);
+    const newComments = [...(post.comments || []), c];
+    setPosts(ps => ps.map(p => p.id === pid ? {...p, comments: newComments} : p));
+    const { error } = await supabaseClient.from('posts')
+      .update({ comments: newComments, updated_at: new Date().toISOString() })
+      .eq('id', pid);
+    if (error) { console.error('Erro ao salvar comentário:', error); loadPosts(); }
+  }, [posts, loadPosts]);
+
+  const addLead = useCallback(async (pid, c) => {
+    const post = posts.find(p => p.id === pid);
+    const newFeedback = [...(post.feedbackLideranca || []), c];
+    setPosts(ps => ps.map(p => p.id === pid ? {...p, feedbackLideranca: newFeedback} : p));
+    const { error } = await supabaseClient.from('posts')
+      .update({ feedback_lideranca: newFeedback, updated_at: new Date().toISOString() })
+      .eq('id', pid);
+    if (error) { console.error('Erro ao salvar feedback:', error); loadPosts(); }
+  }, [posts, loadPosts]);
+
+  // ── Edição inline (LinkedInModal) ────────────────────────────────────────
+  const saveInline = useCallback(async (field, newValue) => {
+    console.log('[allu] saveInline →', field, newValue);
+    if (!viewPostId) return { error: 'Post não encontrado' };
+    const post = posts.find(p => p.id === viewPostId);
+    if (!post) return { error: 'Post não encontrado' };
+
+    // Conflict detection
+    const { data: fresh } = await supabaseClient.from('posts').select('updated_at').eq('id', viewPostId).single();
+    if (fresh?.updated_at && post.updated_at && fresh.updated_at !== post.updated_at) {
+      console.warn('[allu] saveInline: conflito detectado', { local: post.updated_at, remote: fresh.updated_at });
+      return { conflict: true };
+    }
+
+    const oldValue = post[field];
+    if (String(oldValue||'').trim() === String(newValue||'').trim()) { console.log('[allu] saveInline: sem mudança'); return { ok: true }; }
+
+    const autor  = currentUser || '—';
+    const label  = FIELD_LABEL[field] || field;
+    const entry  = makeHistEntry(`${autor} alterou ${label}`, autor, oldValue, newValue);
+    const newHistorico = [...(post.historico || []), entry];
+    const updatedPost  = { ...post, [field]: newValue, historico: newHistorico, updated_at: new Date().toISOString() };
+
+    setPosts(ps => ps.map(p => p.id === viewPostId ? updatedPost : p));
+
+    const dbField = FIELD_TO_DB[field];
+    if (!dbField) return { error: 'Campo não mapeado' };
+
+    console.log('[allu] saveInline: atualizando Supabase', { dbField, newValue });
+    const { error } = await supabaseClient.from('posts')
+      .update({ [dbField]: newValue, historico: newHistorico, updated_at: updatedPost.updated_at })
+      .eq('id', viewPostId);
+    if (error) { console.error('[allu] saveInline error:', error); loadPosts(); return { error: error.message }; }
+    console.log('[allu] saveInline: Supabase atualizado com sucesso');
+    return { ok: true };
+  }, [viewPostId, posts, currentUser, loadPosts]);
 
   const handleTagClick = useCallback((t) => setActiveTag(v => v===t ? '' : t), []);
 
   const openEdit = useCallback((p) => setEditPost(p), []);
   const closeModal = useCallback(() => { setShowAdd(false); setEditPost(null); }, []);
-  const closeViewPost = useCallback(() => setViewPost(null), []);
+  const closeViewPost = useCallback(() => setViewPostId(null), []);
   const closeConfirm = useCallback(() => setConfirm(null), []);
 
   const sc = "border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-700 cursor-pointer focus:ring-0";
@@ -1128,18 +1870,35 @@ const App = () => {
           <div className="flex items-center gap-3">
             <AlluLogo size={36} />
             <div>
-              <h1 className="font-extrabold text-base leading-tight" style={{color:'#111111',fontWeight:800}}>Painel de Publicações LinkedIn</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-base leading-tight" style={{color:'#111111',fontWeight:800}}>Painel de Publicações LinkedIn</h1>
+                <span style={{fontSize:9,fontWeight:800,background:'#1E8549',color:'#fff',padding:'2px 7px',borderRadius:999,letterSpacing:'0.05em',whiteSpace:'nowrap'}}>INLINE EDIT v2</span>
+              </div>
               <p className="text-xs text-gray-400 leading-tight">Acompanhe, revise e aprove os conteúdos antes da publicação.</p>
             </div>
           </div>
-          <button
-            onClick={()=>setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white btn"
-            style={{background:'linear-gradient(135deg,#1E8549,#0F3D2E)',fontWeight:700,boxShadow:'0 2px 10px rgba(30,133,73,0.35)'}}
-          >
-            <Ic n="plus" size={15} color="#fff" />
-            Novo Post
-          </button>
+          <div className="flex items-center gap-3">
+            {currentUser && (
+              <button
+                onClick={() => { const n = prompt('Alterar nome:', currentUser); if (n?.trim()) handleUserName(n.trim()); }}
+                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                title="Clique para alterar seu nome"
+              >
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{background:'#1E8549'}}>
+                  {currentUser[0].toUpperCase()}
+                </div>
+                <span className="text-xs font-medium hidden sm:block">{currentUser}</span>
+              </button>
+            )}
+            <button
+              onClick={()=>setShowAdd(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white btn"
+              style={{background:'linear-gradient(135deg,#1E8549,#0F3D2E)',fontWeight:700,boxShadow:'0 2px 10px rgba(30,133,73,0.35)'}}
+            >
+              <Ic n="plus" size={15} color="#fff" />
+              Novo Post
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1208,7 +1967,24 @@ const App = () => {
         </div>
 
         {/* Content area */}
-        {viewMode === 'calendar' ? (
+        {dbError && (
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'14px 18px',borderRadius:14,background:'#fef2f2',border:'1px solid #fecaca'}}>
+            <Ic n="alert" size={16} color="#ef4444" />
+            <div>
+              <p style={{fontSize:13,fontWeight:600,color:'#dc2626',margin:0}}>Erro ao conectar com o banco de dados</p>
+              <p style={{fontSize:12,color:'#991b1b',margin:'2px 0 0'}}>{dbError}</p>
+            </div>
+            <button onClick={loadPosts} style={{marginLeft:'auto',fontSize:12,fontWeight:600,color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:8,padding:'4px 12px',cursor:'pointer'}}>Tentar novamente</button>
+          </div>
+        )}
+        {postsLoading ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
+            <div className="flex flex-col items-center gap-3">
+              <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid #DFF5E8',borderTopColor:'#1E8549',animation:'spin 0.8s linear infinite'}} />
+              <p className="text-sm text-gray-400">Carregando posts do banco de dados…</p>
+            </div>
+          </div>
+        ) : viewMode === 'calendar' ? (
           <CalendarView posts={filtered} />
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
@@ -1226,7 +2002,7 @@ const App = () => {
               <PostCard
                 key={post.id}
                 post={post}
-                onView={setViewPost}
+                onView={p => setViewPostId(p.id)}
                 onEdit={openEdit}
                 onChangeStatus={changeStatus}
                 onDelete={id=>setConfirm({id, msg:'Excluir este post permanentemente?', danger:true, cb:()=>deletePost(id)})}
@@ -1234,6 +2010,7 @@ const App = () => {
                 onAddLeadFeedback={addLead}
                 activeTag={activeTag}
                 onTagClick={handleTagClick}
+                currentUser={currentUser}
               />
             ))}
           </div>
@@ -1259,9 +2036,10 @@ const App = () => {
       })()}
 
       {/* Modals */}
-      {viewPost && <LinkedInModal post={viewPost} onClose={closeViewPost} />}
+      {showUserModal && <UserModal onConfirm={handleUserName} />}
+      {viewPost && <LinkedInModal post={viewPost} onClose={closeViewPost} onInlineEdit={saveInline} currentUser={currentUser} />}
       {(showAdd || editPost) && (
-        <PostModal post={editPost||null} onClose={closeModal} onSave={savePost} />
+        <PostModal post={editPost||null} onClose={closeModal} onSave={savePost} currentUser={currentUser} />
       )}
       {confirm && (
         <ConfirmModal message={confirm.msg} danger={confirm.danger} onConfirm={confirm.cb} onClose={closeConfirm} />
