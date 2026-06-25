@@ -12,7 +12,8 @@
        (erro "Cannot use import statement outside a module" → tela branca na Vercel). -->
   <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Supabase removido temporariamente: o painel roda em modo local (localStorage). -->
+
   <script>
     tailwind.config = {
       theme: {
@@ -74,48 +75,101 @@
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback, memo } = React;
 
-// ─── Supabase Storage ─────────────────────────────────────────────────────────
-// Preencha com suas credenciais do projeto Supabase.
-// Veja o guia de configuração no README ou nos comentários abaixo.
-const SUPABASE_URL      = "https://lbjnwknvmvvvbkobsmbg.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_DwutKFHg0A0XLEjtRrR6pA_bC3TPlo7";
-const SUPABASE_BUCKET   = "posts-media";
+// ─── Camada de dados LOCAL (MVP, sem banco) ───────────────────────────────────
+// O painel roda 100% no navegador usando localStorage. Não há dependência de
+// rede/Supabase: criar, editar, aprovar, reprovar e visualizar posts funciona
+// offline e os dados persistem entre recarregamentos (neste navegador).
+//
+// `supabaseClient` abaixo é um SHIM que imita a API encadeada do Supabase
+// (.from().select().order(), .insert(), .update().eq(), .delete().eq(),
+//  .select().eq().single()) lendo/gravando em localStorage — assim nenhum
+// ponto de chamada precisou mudar. Para religar um banco real no futuro, basta
+// substituir este shim pelo supabase.createClient(...) original.
+const LS_POSTS_KEY = "allu_posts";
 
-console.log("SUPABASE_URL:", SUPABASE_URL);
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-async function uploadMedia(file) {
-  // Sanitiza o nome do arquivo: remove acentos, substitui espaços e caracteres especiais
-  const ext          = file.name.split('.').pop().toLowerCase();
-  const safeName     = file.name
-    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
-    .replace(/[^a-zA-Z0-9.\-_]/g, '-')               // caracteres especiais → hífen
-    .replace(/-+/g, '-')                              // hifens duplos → único
-    .toLowerCase();
-  const filePath = `${Date.now()}-${safeName}`;
-
-  console.log("SUPABASE UPLOAD — filePath:", filePath);
-  console.log("SUPABASE UPLOAD — fileType:", file.type, "| fileSize:", file.size);
-
-  const { data, error } = await supabaseClient.storage
-    .from(SUPABASE_BUCKET)
-    .upload(filePath, file, { cacheControl: "31536000", upsert: false });
-
-  if (error) {
-    console.error("Supabase upload error:", error);
-    throw new Error(error.message);
+function lsReadPosts() {
+  try { return JSON.parse(localStorage.getItem(LS_POSTS_KEY) || "[]"); }
+  catch (e) { console.warn("[allu] localStorage corrompido, reiniciando:", e); return []; }
+}
+function lsWritePosts(rows) {
+  try { localStorage.setItem(LS_POSTS_KEY, JSON.stringify(rows)); return null; }
+  catch (e) {
+    console.error("[allu] Falha ao gravar no localStorage:", e);
+    // QuotaExceededError costuma vir de mídia muito grande salva em base64.
+    return { message: "Armazenamento local cheio — mídia muito grande para salvar neste navegador." };
   }
+}
 
-  console.log("UPLOAD RESULT:", data);
+// Builder encadeável e "thenable" que resolve contra o localStorage.
+function makeLocalBuilder() {
+  const state = { op: "select", payload: null, filters: [], order: null, single: false };
+  const run = () => new Promise((resolve) => {
+    try {
+      let rows = lsReadPosts();
+      const matches = (r) => state.filters.every(f => r[f.col] === f.val);
 
-  const { data: publicData } = supabaseClient.storage
-    .from(SUPABASE_BUCKET)
-    .getPublicUrl(filePath);
+      if (state.op === "select") {
+        let result = rows.filter(matches);
+        if (state.order) {
+          const { col, ascending } = state.order;
+          result = result.slice().sort((a, b) => {
+            const av = a[col], bv = b[col];
+            if (av === bv) return 0;
+            return (av > bv ? 1 : -1) * (ascending ? 1 : -1);
+          });
+        }
+        resolve({ data: state.single ? (result[0] || null) : result, error: null });
+        return;
+      }
+      if (state.op === "insert") {
+        const toInsert = Array.isArray(state.payload) ? state.payload : [state.payload];
+        const err = lsWritePosts([...toInsert, ...rows]);
+        resolve({ data: err ? null : toInsert, error: err });
+        return;
+      }
+      if (state.op === "update") {
+        const err = lsWritePosts(rows.map(r => matches(r) ? { ...r, ...state.payload } : r));
+        resolve({ data: null, error: err });
+        return;
+      }
+      if (state.op === "delete") {
+        const err = lsWritePosts(rows.filter(r => !matches(r)));
+        resolve({ data: null, error: err });
+        return;
+      }
+      resolve({ data: null, error: { message: "Operação não suportada (modo local)" } });
+    } catch (e) {
+      resolve({ data: null, error: { message: String(e?.message || e) } });
+    }
+  });
 
-  const mediaUrl = publicData.publicUrl;
-  console.log("PUBLIC MEDIA URL:", mediaUrl);
-  return mediaUrl;
+  const builder = {
+    select(_cols) { if (state.op === "select") state.op = "select"; return builder; },
+    insert(payload) { state.op = "insert"; state.payload = payload; return builder; },
+    update(payload) { state.op = "update"; state.payload = payload; return builder; },
+    delete() { state.op = "delete"; return builder; },
+    eq(col, val) { state.filters.push({ col, val }); return builder; },
+    order(col, opts) { state.order = { col, ascending: opts?.ascending !== false }; return builder; },
+    single() { state.single = true; return builder; },
+    // torna o builder "awaitable"
+    then(onFulfilled, onRejected) { return run().then(onFulfilled, onRejected); },
+  };
+  return builder;
+}
+
+const supabaseClient = {
+  from(_table) { return makeLocalBuilder(); },
+};
+
+// Upload de mídia local: converte o arquivo em data URL (base64) e devolve essa
+// string como "URL". Persiste junto do post no localStorage (ideal p/ imagens).
+function uploadMedia(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo localmente."));
+    reader.readAsDataURL(file);
+  });
 }
 
 // ─── Supabase DB helpers ──────────────────────────────────────────────────────
@@ -270,6 +324,7 @@ const ICONS = {
   video:         <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>,
   'play-circle': <><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></>,
   mail:          <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></>,
+  info:          <><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>,
 };
 
 const Ic = ({ n, size=16, color='currentColor', sw=2 }) => (
@@ -2013,11 +2068,18 @@ const App = () => {
         </div>
 
         {/* Content area */}
+        {/* Aviso amigável de modo local (sem banco) — não-alarmante */}
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',borderRadius:12,background:'#F0FDF4',border:'1px solid #BBF7D0'}}>
+          <Ic n="info" size={15} color="#1E8549" />
+          <p style={{fontSize:12.5,fontWeight:500,color:'#166534',margin:0}}>
+            Modo local — seus posts são salvos neste navegador. Funciona sem conexão com banco de dados.
+          </p>
+        </div>
         {dbError && (
           <div style={{display:'flex',alignItems:'center',gap:10,padding:'14px 18px',borderRadius:14,background:'#fef2f2',border:'1px solid #fecaca'}}>
             <Ic n="alert" size={16} color="#ef4444" />
             <div>
-              <p style={{fontSize:13,fontWeight:600,color:'#dc2626',margin:0}}>Erro ao conectar com o banco de dados</p>
+              <p style={{fontSize:13,fontWeight:600,color:'#dc2626',margin:0}}>Não foi possível carregar os posts salvos neste navegador</p>
               <p style={{fontSize:12,color:'#991b1b',margin:'2px 0 0'}}>{dbError}</p>
             </div>
             <button onClick={loadPosts} style={{marginLeft:'auto',fontSize:12,fontWeight:600,color:'#dc2626',background:'none',border:'1px solid #fecaca',borderRadius:8,padding:'4px 12px',cursor:'pointer'}}>Tentar novamente</button>
@@ -2027,7 +2089,7 @@ const App = () => {
           <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center" style={{boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
             <div className="flex flex-col items-center gap-3">
               <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid #DFF5E8',borderTopColor:'#1E8549',animation:'spin 0.8s linear infinite'}} />
-              <p className="text-sm text-gray-400">Carregando posts do banco de dados…</p>
+              <p className="text-sm text-gray-400">Carregando posts…</p>
             </div>
           </div>
         ) : viewMode === 'calendar' ? (
