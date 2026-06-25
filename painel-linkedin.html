@@ -7,7 +7,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Babel fixado em v7: o v8 mudou o runtime padrão do JSX para "automatic",
+       que injeta `import ... from "react/jsx-runtime"` e quebra o script inline
+       (erro "Cannot use import statement outside a module" → tela branca na Vercel). -->
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
@@ -68,7 +71,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef, useMemo, useCallback, memo } = React;
 
 // ─── Supabase Storage ─────────────────────────────────────────────────────────
@@ -1073,10 +1076,42 @@ const PostModal = ({ post, onClose, onSave, currentUser }) => {
       } : {}),
       ...meta,
     };
-    const autor = currentUser || '—';
+    const autor   = currentUser || '—';
+    const baseHist = [...(post?.historico || [])];
+
+    if (post?.id) {
+      // Detecta mudanças de mídia/capa para entradas específicas no histórico
+      const prevMedia = post.mediaURL  || '';
+      const newMedia  = built.mediaURL || '';
+      const prevCover = post.coverUrl  || '';
+      const newCover  = built.coverUrl || '';
+
+      if (newMedia && newMedia !== prevMedia) {
+        const tipo = built.mediaType === 'video' ? 'um vídeo' : 'uma imagem';
+        baseHist.push(makeHistEntry(`${autor} adicionou ${tipo}`, autor));
+      } else if (!newMedia && prevMedia) {
+        baseHist.push(makeHistEntry(`${autor} removeu a mídia`, autor));
+      }
+
+      if (newCover && newCover !== prevCover) {
+        baseHist.push(makeHistEntry(`${autor} trocou a capa`, autor));
+      }
+
+      baseHist.push(makeHistEntry(`${autor} editou o post`, autor));
+    } else {
+      if (built.mediaURL) {
+        const tipo = built.mediaType === 'video' ? 'um vídeo' : 'uma imagem';
+        baseHist.push(makeHistEntry(`${autor} adicionou ${tipo}`, autor));
+      }
+      if (built.coverUrl) {
+        baseHist.push(makeHistEntry(`${autor} adicionou a capa`, autor));
+      }
+      baseHist.push(makeHistEntry(`${autor} criou o post`, autor));
+    }
+
     const finalPost = post?.id
-      ? {...post, ...built, historico:[...(post.historico||[]), makeHistEntry(`${autor} editou o post`, autor)]}
-      : {...built, id:Date.now(), comments:[], feedbackLideranca:[], historico:[makeHistEntry(`${autor} criou o post`, autor)]};
+      ? { ...post, ...built, historico: baseHist }
+      : { ...built, id: Date.now(), comments: [], feedbackLideranca: [], historico: baseHist };
 
     onSave(finalPost);
     onClose();
@@ -1797,20 +1832,24 @@ const App = () => {
 
   const addComment = useCallback(async (pid, c) => {
     const post = posts.find(p => p.id === pid);
-    const newComments = [...(post.comments || []), c];
-    setPosts(ps => ps.map(p => p.id === pid ? {...p, comments: newComments} : p));
+    const newComments  = [...(post.comments || []), c];
+    const entry        = makeHistEntry(`${c.autor} adicionou um comentário`, c.autor);
+    const newHistorico = [...(post.historico || []), entry];
+    setPosts(ps => ps.map(p => p.id === pid ? {...p, comments: newComments, historico: newHistorico} : p));
     const { error } = await supabaseClient.from('posts')
-      .update({ comments: newComments, updated_at: new Date().toISOString() })
+      .update({ comments: newComments, historico: newHistorico, updated_at: new Date().toISOString() })
       .eq('id', pid);
     if (error) { console.error('Erro ao salvar comentário:', error); loadPosts(); }
   }, [posts, loadPosts]);
 
   const addLead = useCallback(async (pid, c) => {
     const post = posts.find(p => p.id === pid);
-    const newFeedback = [...(post.feedbackLideranca || []), c];
-    setPosts(ps => ps.map(p => p.id === pid ? {...p, feedbackLideranca: newFeedback} : p));
+    const newFeedback  = [...(post.feedbackLideranca || []), c];
+    const entry        = makeHistEntry(`${c.autor} adicionou feedback da liderança`, c.autor);
+    const newHistorico = [...(post.historico || []), entry];
+    setPosts(ps => ps.map(p => p.id === pid ? {...p, feedbackLideranca: newFeedback, historico: newHistorico} : p));
     const { error } = await supabaseClient.from('posts')
-      .update({ feedback_lideranca: newFeedback, updated_at: new Date().toISOString() })
+      .update({ feedback_lideranca: newFeedback, historico: newHistorico, updated_at: new Date().toISOString() })
       .eq('id', pid);
     if (error) { console.error('Erro ao salvar feedback:', error); loadPosts(); }
   }, [posts, loadPosts]);
@@ -1878,16 +1917,23 @@ const App = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {currentUser && (
+            {currentUser ? (
               <button
                 onClick={() => { const n = prompt('Alterar nome:', currentUser); if (n?.trim()) handleUserName(n.trim()); }}
-                className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                 title="Clique para alterar seu nome"
+                style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px 6px 6px',borderRadius:999,border:'1.5px solid #e5e7eb',background:'#fff',cursor:'pointer',transition:'border-color 0.15s',outline:'none'}}
+                onMouseEnter={e=>e.currentTarget.style.borderColor='#1E8549'}
+                onMouseLeave={e=>e.currentTarget.style.borderColor='#e5e7eb'}
               >
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0" style={{background:'#1E8549'}}>
+                <div style={{width:28,height:28,borderRadius:'50%',background:'linear-gradient(135deg,#1E8549,#0F3D2E)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:800,fontSize:12,flexShrink:0}}>
                   {currentUser[0].toUpperCase()}
                 </div>
-                <span className="text-xs font-medium hidden sm:block">{currentUser}</span>
+                <span style={{fontSize:13,fontWeight:600,color:'#111',whiteSpace:'nowrap'}}>{currentUser}</span>
+                <Ic n="chevron-down" size={12} color="#9ca3af" />
+              </button>
+            ) : (
+              <button onClick={()=>setShowUserModal(true)} style={{fontSize:12,fontWeight:600,color:'#1E8549',padding:'6px 14px',borderRadius:999,border:'1.5px solid #1E8549',background:'#fff',cursor:'pointer'}}>
+                Identificar-se
               </button>
             )}
             <button
