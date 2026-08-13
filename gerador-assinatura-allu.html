@@ -363,6 +363,17 @@ function normalizeLinkedIn(v){
   label = href.replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "");
   return { href: href, label: label };
 }
+function normalizePhoneHref(v){
+  v = (v || "").trim();
+  if(!v) return null;
+  var digits = v.replace(/\D/g, "");
+  if(!digits) return null;
+  if(v.charAt(0) === "+") return "tel:+" + digits;               // já veio com código do país
+  digits = digits.replace(/^0+/, "");                            // remove zeros de operadora/DDD
+  if(/^55\d{10,11}$/.test(digits)) return "tel:+" + digits;      // digitou 55 sem o "+"
+  if(digits.length === 10 || digits.length === 11) return "tel:+55" + digits; // DDD + número (BR)
+  return "tel:+" + digits;                                       // fallback: outros formatos
+}
 function slug(s){
   return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
@@ -399,7 +410,12 @@ function buildSignatureHTML(d){
   var cp = [];
   if(d.email){ cp.push("<a href=\"mailto:" + escAttr(d.email) + "\" style=\"" + S.email + "\">" + esc(d.email) + "</a>"); }
   else { cp.push("<span style=\"" + S.contactTxt + "\">nome@allugator.com</span>"); }
-  if(d.phone) cp.push("<span style=\"" + S.contactTxt + "\">" + esc(d.phone) + "</span>");
+  if(d.phone){
+    var telHref = normalizePhoneHref(d.phone);
+    cp.push(telHref
+      ? "<a href=\"" + escAttr(telHref) + "\" style=\"" + S.contactLink + "\">" + esc(d.phone) + "</a>"
+      : "<span style=\"" + S.contactTxt + "\">" + esc(d.phone) + "</span>");
+  }
   if(d.li)    cp.push("<a href=\"" + escAttr(d.li.href) + "\" style=\"" + S.contactLink + "\">" + esc(d.li.label) + "</a>");
   if(d.city)  cp.push("<span style=\"" + S.contactTxt + "\">" + esc(d.city) + "</span>");
   var contactLine = cp.join(SEP);
